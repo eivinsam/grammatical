@@ -1,11 +1,111 @@
 #include "phrase.h"
+#include "ranged.h"
 
-#include <string_view>
+#include <cctype>
+#include <unordered_map>
+#include <string>
+#include <fstream>
+#include <iostream>
+
 
 using std::pair;
 using std::shared_ptr;
 using std::vector;
+using std::string;
 using std::string_view;
+
+template <class Input>
+class TokenIterator
+{
+	shared_ptr<Input> _input;
+	string _token;
+
+	void _read_break()
+	{
+		_token = "\n";
+		for (;;) switch (_input->peek())
+		{
+		case ' ': case '\t': case '\r': case '\n':
+			_input->get();
+			continue;
+		default:
+			return;
+		}
+	}
+	void _read_white()
+	{
+		_token = " ";
+		for (;;) switch (_input->peek())
+		{
+		case ' ': case '\t': _input->get(); continue;
+		case '\r': case '\n': _read_break(); return;
+		default:
+			return;
+		}
+	}
+
+	static bool _is_white(char ch) { return ch == ' ' || ch == '\t'; }
+	static bool _is_newline(char ch) { return ch == '\r' || ch == '\n'; }
+
+	void _read_token()
+	{
+		_token.clear();
+		switch (const char ch = _input->get())
+		{
+		case ' ': case '\t': _read_white(); return;
+		case '\r': case '\n': _read_break(); return;
+		default:
+			if (!_input->good())
+				return;
+			_token.push_back(ch);
+			if (isalnum(ch))
+			{
+				while (isalnum(_input->peek()))
+					_token.push_back(_input->get());
+			}
+			return;
+		}
+	}
+public:
+	struct End { };
+
+	template <class... Args>
+	TokenIterator(Args&&... args) : _input(std::make_shared<Input>(std::forward<Args>(args)...)) { _read_token(); }
+
+	TokenIterator& operator++() { _read_token(); return *this; }
+
+	const string& operator*() const { return _token; }
+	const string* operator->() const { return &_token; }
+
+	bool operator==(End) const { return _token.empty(); }
+	bool operator!=(End) const { return !operator==(End{}); }
+
+	explicit operator bool() const { return !_token.empty(); }
+
+	bool isNewline()    const { return _token.size() == 1 && _token.front() == '\n'; }
+	bool isWhitespace() const { return _token.size() == 1 && _token.front() == ' '; }
+
+	void flushLine()
+	{
+		if (isNewline()) 
+			return;
+		while (_input->get() != '\n') { }
+		_read_break();
+	}
+	bool skipws()
+	{
+		if (isWhitespace())
+			_read_token();
+		return _token.empty() || isNewline();
+	}
+};
+
+template <class Input>
+struct std::iterator_traits<TokenIterator<Input>> : ranged::InputInteratorTraits<TokenIterator<Input>> { };
+
+template <class Input, class... Args>
+auto tokens(Args&&... args) { return ranged::range(TokenIterator<Input>(std::forward<Args>(args)...), typename TokenIterator<Input>::End{}); }
+
 
 static bool ignore_case_less(string_view a, string_view b)
 {
@@ -14,116 +114,119 @@ static bool ignore_case_less(string_view a, string_view b)
 	for (; ita != enda; ++ita, ++itb)
 	{
 		if (itb == endb) return false;
-		const auto ca = tolower(*ita);
-		const auto cb = tolower(*itb);
+		const auto ca = std::tolower(*ita);
+		const auto cb = std::tolower(*itb);
 		if (cb < ca) return false;
 		if (ca < cb) return true;
 	}
 	return itb != endb;
 }
 
+using Lexicon = std::unordered_multimap<string, Lexeme::ptr>;
 
-const vector<shared_ptr<const Word>>& parse_word(string_view orth)
+template <class Input>
+Lexeme::ptr parseLexeme(TokenIterator<Input>& it, const int line, Lexicon& lexicon)
 {
-	class Trie
+	const auto get_unique = [&]() -> Lexeme::ptr
 	{
-		using Entry = shared_ptr<const Word>;
-		vector<Entry>  _matches;
-		vector<pair<char, Trie>> _subs;
-
-		auto _find(char ch) const
+		auto range = lexicon.equal_range(*it);
+		Lexeme::ptr lex;
+		if (range.first == range.second)
 		{
-			for (auto it = _subs.begin(); it != _subs.end(); ++it)
-				if (it->first == ch)
-					return it;
-			return _subs.end();
+			lex = std::make_shared<Lexeme>(*it);
+			lexicon.emplace(*it, lex);
 		}
-		auto _find(char ch)
+		else
 		{
-			for (auto it = _subs.begin(); it != _subs.end(); ++it)
-				if (it->first == ch)
-					return it;
-			return _subs.end();
-
+			lex = range.first->second;
+			++range.first;
 		}
-	public:
-		Trie() = default;
-		Trie(std::initializer_list<pair<string_view, Tags>> entries)
-		{
-			for (auto&& e : entries)
-				insert(e.first, std::make_shared<Word>(e.first, e.second));
-		}
+		if (range.first == range.second)
+			return lex;
 
-		void insert(string_view orth, Entry entry)
+		std::cout << "ignoring ambiguous lexeme '" << *it << "' referred on line " << line << "\n";
+		return nullptr;
+	};
+	const auto write_dotlist_to = [&](auto& dst)
+	{
+		for (;;)
 		{
-			if (orth.empty())
-				_matches.emplace_back(move(entry));
-			else
+			if constexpr (std::is_same_v<std::decay_t<decltype(dst.back())>, Lexeme::ptr>)
 			{
-				const char key = tolower(orth.front());
-				auto found = _find(key);
-				if (found == _subs.end())
-				{
-					_subs.emplace_back();
-					_subs.back().first = key;
-					found = --_subs.end();
-				}
-				found->second.insert(orth.substr(1), move(entry));
+				if (auto lex = get_unique())
+					dst.emplace_back(lex);
 			}
-		}
-		const vector<Entry>& find(string_view orth) const
-		{
-			static const vector<Entry> empty;
-			if (orth.empty())
-				return _matches;
 			else
+				dst.emplace_back(*it);
+			++it;
+			if (!it || it.isWhitespace() || it.isNewline()) return;
+			if (*it != ".")
 			{
-				const char key = tolower(orth.front());
-				auto found = _find(key);
-				if (found == _subs.end())
-					return empty;
-				return found->second.find(orth.substr(1));
+				std::cout << "expected '.' or whitespace";
+				it.flushLine();
+				return;
 			}
+			++it;
 		}
 	};
 
-	static constexpr Tags nsg3 = Tag::noun | Tag::sg | Tag::third;
-	static constexpr Tags npl3 = Tag::noun | Tag::pl | Tag::third | Tag::spec;
-	static constexpr Tags vsgpres = Tag::verb | Tag::finite | Tag::sg;
-	static constexpr Tags vplpres = Tag::verb | Tag::finite | Tag::pl;
-	static constexpr Tags vpast   = Tag::verb | Tag::finite | Tag::past;
-	static constexpr Tags vpresp = Tag::verb | Tag::part;
-	static constexpr Tags vpastp = Tag::verb | Tag::part | Tag::past;
+	if (it.isNewline() || it.isWhitespace()) ++it;
+	if (!it) return nullptr;
+	std::shared_ptr<Lexeme> lex = std::make_shared<Lexeme>(*it);
+	if ((++it).skipws()) return lex;
 
-	static const Trie dict =
+	if (*it != ":")
 	{
-		{ "a", Tag::det | Tag::sg },
-		{ "an", Tag::det | Tag::sg },
-		{ "some", Tag::det | Tag::pl | Tag::uc },
-		{ "the", Tag::det | Tag::sg | Tag::pl },
-		{ "this", Tag::det | Tag::sg }, { "these", Tag::det | Tag::pl },
-		{ "that", Tag::det | Tag::sg }, { "those", Tag::det | Tag::pl },
-		{ "my", Tag::det | Tag::sg | Tag::pl },
-		{ "have", vplpres | Tag::aux_past },
-		{ "has", vsgpres | Tag::aux_past },
-		{ "having", vpresp | Tag::aux_past },
-		{ "had", vpast | vpastp | Tag::aux_past },
-		{ "do", vplpres }, 
-		{ "does", vsgpres },
-		{ "doing", vpresp },
-		{ "did", vpast },
-		{ "done", vpastp },
-		{ "sell", vplpres }, { "sells", vsgpres }, { "selling", vpresp }, { "sold", vpast | vpastp },
-		{ "book", nsg3 }, { "books", npl3 },
-		{ "idea", nsg3 }, { "ideas", npl3 },
-		{ "teacher", nsg3 }, { "teachers", npl3 },
-		{ "wish", nsg3 }, { "wishes", npl3 },
-		{ "English", Tag::adn },
-		{ "expensive", Tag::adn },
-		{ "latest", Tag::adn },
-		{ "old", Tag::adn },
-		{ "very", Tag::adad }
-	};
+		std::cout << "expected ':' or newline after lexeme name on line " << line << "\n";
+		it.flushLine();
+		return lex;
+	}
+	if ((++it).skipws()) return lex;
 
-	return dict.find(orth);
+	if (*it != ":") write_dotlist_to(lex->parts);
+	if (it.skipws()) return lex;
+	if (*it == ":")
+	{
+		++it;
+		if (!it || it.isNewline() | it.isWhitespace())
+		{
+			std::cout << "unexpected whitespace after ':' on line " << line << "\n";
+		}
+		else
+		{
+			write_dotlist_to(lex->spec);
+		}
+	}
+
+	while (it && !it.isNewline())
+	{
+		std::cout << "ignoring '" << *it << "' on line " << line << "\n";
+		++it;
+	}
+	return lex;
+}
+
+
+vector<shared_ptr<const Word>> parse_word(string_view orth)
+{
+	static const auto lexicon = [&]
+	{
+		Lexicon result;
+		int line = 1;
+		for (TokenIterator<std::ifstream> it("lexemes.txt"); it; ++it, ++line)
+		{
+			if (auto lex = parseLexeme(it, line, result))
+				result.emplace(lex->name, lex);
+		}
+		line = 1;
+		for (TokenIterator<std::ifstream> it("words.txt"); it; ++it, ++line)
+		{
+			if (auto lex = parseLexeme(it, line, result))
+				result.emplace('\'' + lex->name, lex);
+		}
+		return result;
+	}();
+
+
+	return lexicon.equal_range('\''+string(orth)) | ranged::values | ranged::map(std::make_shared<Word, const Lexeme::ptr&>);
 }

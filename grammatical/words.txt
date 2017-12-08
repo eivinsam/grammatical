@@ -1,0 +1,61 @@
+the: gen.sg.pl.uc
+a: gen.sg
+this: gen.sg.uc
+that: gen.sg.uc
+these: gen.pl
+those: gen.pl
+my: gen.sg.pl.uc
+your: gen.sg.pl.uc
+his: gen.sg.pl.uc
+her: gen.sg.pl.uc
+their: gen.sg.pl.uc
+our: gen.sg.pl.uc
+I: nom.1.sg
+me: akk.1.sg
+you: nom.akk.2.sg.pl
+he: nom.3.sg
+him: akk.3.sg
+she: nom.3.sg
+her: akk.3.sg
+it: nom.akk.3.sg
+we: nom.1.pl
+us: akk.1.pl
+they: nom.3.pl
+them: akk.3.pl
+
+book: nounsg
+books: nounpl
+computer: nounsg
+computers: nounpl
+idea: nounsg
+teacher: nounsg
+wish: nounsg
+
+English: adn
+expensive: adn
+latest: adn
+
+very: adad
+
+am:   pres.free :1.sg
+is:   pres.free :3.sg
+are:  pres.free :non13sg
+was:  past.free :13.sg
+were: past.free :non13sg
+been: past.part 
+
+do:    pres.free :non3sg
+does:  pres.free :3.sg
+doing: pres.part
+did:   past.free :nom
+done:  past.part
+
+see: pres.fin :non3sg
+sees: pres.fin :3.sg
+seeing: pres.part
+saw: past.fin :nom
+seen: past.part
+sell: pres.fin :non3sg
+sells: pres.fin :3.sg
+selling: pres.part
+sold: past.fin.part :nom

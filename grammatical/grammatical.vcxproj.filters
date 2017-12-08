@@ -32,5 +32,16 @@
     <ClInclude Include="phrase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ranged.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="words.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="lexemes.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>

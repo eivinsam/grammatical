@@ -1,0 +1,18 @@
+nom: case
+akk: case
+gen: case
+non13sg: non3sg
+sg: num
+pl: num.non13sg
+13: per
+1: 13.non3sg
+2: per.non13sg
+3: 13
+nounsg: nom.akk.3.sg :sg
+nounpl: nom.akk.3.pl :pl
+nounuc: nom.akk.3.uc :uc
+pres: verb
+past: verb
+free: fin
+adn: ad
+adv: ad

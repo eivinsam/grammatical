@@ -60,9 +60,9 @@ class Parser
 
 	void _match(const shared_ptr<const Phrase>& a, const shared_ptr<const Phrase>& b, int from, int to)
 	{
-		if (auto match = a->right_rule(a, b))
+		for (auto match : a->right_rule(head(a), b))
 			_agenda.emplace(move(match), from, to);
-		if (auto match = b->left_rule(b, a))
+		for (auto match : b->left_rule(a, head(b)))
 			_agenda.emplace(move(match), from, to);
 	}
 
@@ -149,13 +149,31 @@ public:
 		auto result = parse_word(word);
 		if (result.empty())
 		{
-			auto new_word = make_shared<Word>(word, Tags{});
+			auto new_word = make_shared<Word>(make_shared<Lexeme>(word));
 			new_word->errors.emplace("unknown word " + word);
 			result.emplace_back(move(new_word));
 		}
 		return result;
 	}
 };
+
+// 'I  -> noun, sg, 1, nom
+// 'me -> noun, sg, 1, acc
+// 'my -> noun, sg, 1, gen
+// ...
+// 'cow -> noun, 3, nom, acc, :sg(gen)
+// 'cows -> noun, 3, nom, acc, pl, :pl(gen)
+// 'milk -> noun, 3, nom, acc, sg, :(gen)
+
+// X(Y) + Z:X(Y) -> Z.X
+
+// gen.sg + noun:gen.sg -> noun.sg
+// gen.pl + noun:gen.pl -> noun.pl
+// noun.nom.nonsg3 + verb.pres:nom.nonsg3 -> verb.pres.s
+// noun.nom.sg.3 + verb.pres:nom.sg.3 -> verb.pres.s
+// noun.nom.num.per + verb.past:nom -> verb.past.s
+// noun.nom.num.par + verb.part:nom -> verb.part.s
+// 
 
 int main(int argc, char* argv[])
 {
