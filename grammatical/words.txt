@@ -1,9 +1,10 @@
 the: gen.sg.pl.uc
 a: gen.sg
-this: gen.sg.uc
-that: gen.sg.uc
-these: gen.pl
-those: gen.pl
+some: gen.pl.uc|noun.pl
+this: gen.sg.uc|noun.sg
+that: gen.sg.uc|noun.sg
+these: gen.pl|noun.pl
+those: gen.pl|noun.pl
 my: gen.sg.pl.uc
 your: gen.sg.pl.uc
 his: gen.sg.pl.uc
@@ -23,40 +24,58 @@ us: akk.1.pl
 they: nom.3.pl
 them: akk.3.pl
 
+of: prep +akk
+
 book: nounsg
 books: nounpl
 computer: nounsg
 computers: nounpl
+food: nounuc
+furniture: nounuc
 idea: nounsg
+information: nounuc
 teacher: nounsg
 wish: nounsg
+
+lot: nounsg <'of
 
 English: adn
 expensive: adn
 latest: adn
+new: adn
 old: adn
+useful: adn
 
 very: adad
 
 am:   pres.free +akk|pres.part|adn :1.sg
 is:   pres.free +akk|pres.part|adn :3.sg
 are:  pres.free +akk|pres.part|adn :2|pl
-was:  past.free +akk|pres.part|adn :1.sg|2.sg
+was:  past.free +akk|pres.part|adn :1.sg|3.sg
 were: past.free +akk|pres.part|adn :2|pl
 been: past.part +akk|pres.part|adn 
 
-do:    pres.free.dict +akk|pres.dict :1.sg|2.sg
+do:    pres.free.dict +akk|pres.dict :1|2|pl
 does:  pres.free      +akk|pres.dict :3.sg
 doing: pres.part
 did:   past.free +akk|pres.dict :nom
 done:  past.part
 
-see: pres.fin :1.sg|2.sg
+buy:    pres.fin +akk :1|2|pl
+buys:   pres.fin +akk :3.sg
+bought: past.fin.part +akk :nom
+buying: pres.part
+eat:  pres.fin +akk :1|2|pl
+eats: pres.fin +akk :3.sg
+ate:  past.fin +akk :nom
+eating: pres.part
+eate:   past.part
+see: pres.fin :1|2|pl
 sees: pres.fin :3.sg
 seeing: pres.part
 saw: past.fin :nom
 seen: past.part
-sell:  pres.fin +akk :1.sg|2.sg
+sell:  pres.fin +akk :1|2|pl
 sells: pres.fin +akk :3.sg
 selling: pres.part
 sold: past.fin.part :nom

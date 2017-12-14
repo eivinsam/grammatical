@@ -183,9 +183,8 @@ public:
 	template <Rel R>
 	bool matches(const ptr& p) const 
 	{
-		if constexpr (R == Rel::is)
-			if (this == p.get() || is().matches<R>(p))
-				return true;
+		if (this == p.get() || is().matches<R>(p))
+			return true;
 		auto rel = p->rels.find(R); 
 		return (rel != p->rels.end() && matches<Rel::is>(rel->second)) || 
 			matches<R>(p->is());
@@ -213,6 +212,7 @@ public:
 namespace tag
 {
 	using namespace std::literals;
+	static constexpr auto prep = "prep"sv;
 	static constexpr auto verb = "verb"sv;
 	static constexpr auto pres = "pres"sv;
 	static constexpr auto past = "past"sv;
@@ -220,7 +220,6 @@ namespace tag
 	static constexpr auto free = "free"sv;
 	static constexpr auto fin = "fin"sv;
 	static constexpr auto gen = "gen"sv;
-	static constexpr auto nongen = "nongen"sv;
 	static constexpr auto akk = "akk"sv;
 	static constexpr auto nom = "nom"sv;
 	static constexpr auto adn = "adn"sv;

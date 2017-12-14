@@ -10,6 +10,13 @@ std::shared_ptr<RightBranch> merge(Lexeme::ptr lex, const Head& head, char type,
 	return std::make_shared<RightBranch>(move(lex), type, head, mod, l, r);
 }
 
+template <class A, class B>
+decltype(auto) append(A&& a, B&& b)
+{
+	a.insert(a.end(), b.begin(), b.end());
+	return std::forward<A>(a);
+}
+
 RuleOutput noun_det(const Mod& mod, const Head& head)
 {
 	if (mod->is(tag::gen))
@@ -37,17 +44,19 @@ RuleOutput noun_adjective(const Mod& mod, const Head& head)
 	return noun_det(mod, head);
 }
 
-//RuleOutput head_prep(RuleInput head, RuleInput mod)
-//{
-//	if (mod->has(Tag::prep))
-//	{
-//		const auto result = merge(tags::none, tags::none, head, Branch::right, mod, head->left_rule, head_prep);
-//		if (dynamic_cast<const Word*>(mod.get()))
-//			result->errors.emplace("preposition has no complement");
-//		return result;
-//	}
-//	return nullptr;
-//}
+RuleOutput head_prep(const Head& head, const Mod& mod)
+{
+	if (mod->is(tag::prep))
+	{
+		const auto result = merge(head->lex, head, '<', mod, head->left_rule, head_prep);
+		if (!mod->lex->matches<Rel::mod>(head->lex))
+			result->errors.emplace("preposition not agreeable");
+		if (!mod->hasBranch('+'))
+			result->errors.emplace("preposition has no complement");
+		return { result };
+	}
+	return {};
+}
 
 RuleOutput noun_rmod(const Head& head, const Mod& mod)
 {
@@ -57,12 +66,19 @@ RuleOutput noun_rmod(const Head& head, const Mod& mod)
 
 		if (!mod->is(tag::part))
 			result->errors.emplace("verb right-modifying noun must be a participle");
-		else if (dynamic_cast<const Word*>(mod.get()))
-			result->errors.emplace("verb phrase must be complex to right-modify a noun");
+		else
+		{
+			if (mod->is(tag::past) && mod->hasBranch('+'))
+				result->errors.emplace("past participle modifying noun can't have an object");
+			if (mod->is(tag::pres) && mod->hasBranch(':'))
+				result->errors.emplace("present participle modifying noun can't have subject");
+			if (dynamic_cast<const Word*>(mod.get()))
+				result->errors.emplace("verb phrase must be complex to right-modify a noun");
+		}
 
 		return { result };
 	}
-	return {};//head_prep(move(head), move(mod));
+	return head_prep(head, mod);
 }
 
 RuleOutput verb_spec(const Mod& mod, const Head& head)
@@ -78,7 +94,7 @@ RuleOutput verb_spec(const Mod& mod, const Head& head)
 	}
 	return {};
 }
-RuleOutput verb_comp(const Head& head, const Mod& mod)
+RuleOutput head_comp(const Head& head, const Mod& mod)
 {
 	if (mod->is(tag::akk) || mod->is(tag::verb) || mod->is(tag::adn))
 	{
@@ -92,7 +108,11 @@ RuleOutput verb_comp(const Head& head, const Mod& mod)
 
 		return { result };
 	}
-	return {};// head_prep(move(head), move(mod));
+	return {};
+}
+RuleOutput verb_comp(const Head& head, const Mod& mod)
+{
+	return append(head_comp(head, mod), head_prep(head, mod));
 }
 RuleOutput verb_rspec(const Head& head, const Mod& mod)
 {
@@ -126,9 +146,9 @@ Word::Word(Lexeme::ptr lexeme) : Phrase{ 1, move(lexeme),{} }
 	{
 		left_rule = ad_adad;
 	}
-	//else if (tags.has(Tag::prep))
-	//{
-	//	left_rule = no_rule;
-	//	right_rule = verb_comp;
-	//}
+	else if (lex->is(tag::prep))
+	{
+		left_rule = no_left;
+		right_rule = verb_comp;
+	}
 }

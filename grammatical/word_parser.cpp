@@ -39,12 +39,18 @@ Lexeme::ptr parseLexeme(TokenIterator<Input>& it, const int line, Lexicon& lexic
 {
 	const auto get_unique = [&]() -> Lexeme::ptr
 	{
-		auto range = lexicon.equal_range(*it);
+		auto key = *it; ++it;
+		if (key == "'" && isalpha(it->front()))
+		{
+			key += *it;
+			++it;
+		}
+		auto range = lexicon.equal_range(key);
 		Lexeme::ptr lex;
 		if (range.first == range.second)
 		{
-			lex = std::make_shared<Lexeme>(*it);
-			lexicon.emplace(*it, lex);
+			lex = std::make_shared<Lexeme>(key);
+			lexicon.emplace(key, lex);
 		}
 		else
 		{
@@ -54,7 +60,7 @@ Lexeme::ptr parseLexeme(TokenIterator<Input>& it, const int line, Lexicon& lexic
 		if (range.first == range.second)
 			return lex;
 
-		std::cout << "ignoring ambiguous lexeme '" << *it << "' referred on line " << line << "\n";
+		std::cout << "ignoring ambiguous lexeme '" << key << "' referred on line " << line << "\n";
 		return nullptr;
 	};
 	const auto read_dotlist = [&]
@@ -68,7 +74,6 @@ Lexeme::ptr parseLexeme(TokenIterator<Input>& it, const int line, Lexicon& lexic
 					result.emplace_back();
 				result.back().emplace_back(move(lex));
 			}
-			++it;
 			if (!it || it.isWhitespace() || it.isNewline()) break;
 			if (*it == "|")
 				more_or = true;
@@ -100,22 +105,22 @@ Lexeme::ptr parseLexeme(TokenIterator<Input>& it, const int line, Lexicon& lexic
 	{
 		if (it.skipws()) 
 			return lex;
-		switch (it->front())
+		if (it->size() == 1) switch (it->front())
 		{
 		case ':': ++it; lex->rels[Rel::spec] = read_dotlist(); continue;
 		case '+': ++it; lex->rels[Rel::comp] = read_dotlist(); continue;
-		default:
-			if (isalnum(it->front()))
-			{
-				if (auto list = read_dotlist(); !list.empty())
-					lex->rels[Rel::is] = move(list);
-				continue;
-			}
-			std::cout << "unexpected relation '" << *it << "' on line " << line << "\n";
-			goto ignore_rest;
+		case '<': ++it; lex->rels[Rel::mod]  = read_dotlist(); continue;
+		default: break;
 		}
+		if (isalnum(it->front()))
+		{
+			if (auto list = read_dotlist(); !list.empty())
+				lex->rels[Rel::is] = move(list);
+			continue;
+		}
+		std::cout << "unexpected relation '" << *it << "' on line " << line << "\n";
+		break;
 	}
-ignore_rest:
 	while (it && !it.isNewline())
 	{
 		std::cout << "ignoring '" << *it << "' on line " << line << "\n";

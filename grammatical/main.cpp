@@ -185,7 +185,10 @@ int main(int argc, char* argv[])
 		"a wish",
 		"my latest idea",
 		"computers are very expensive",
-		"do you sell old books"
+		"do you sell old books",
+		"we ate a lot of food",
+		"we bought some new furniture",
+		"that is useful information"
 	};
 
 	int i = 0;
