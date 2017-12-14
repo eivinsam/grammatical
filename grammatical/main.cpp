@@ -1,4 +1,5 @@
 #include "phrase.h"
+#include "tokens.h"
 
 #include <memory>
 #include <iostream>
@@ -135,24 +136,24 @@ public:
 template <class Stream>
 class Tokenizer
 {
-	Stream _in;
+	TokenIterator<Stream> _it;
 public:
 	template <class... Args>
-	Tokenizer(Args&&... args) : _in(forward<Args>(args)...) { }
+	Tokenizer(Args&&... args) : _it(forward<Args>(args)...) { }
 
 	optional<vector<shared_ptr<const Word>>> next()
 	{
-		string word;
-		_in >> word;
-		if (word.empty())
+		if (_it.isWhitespace()) ++_it;
+		if (!_it || _it.isNewline())
 			return nullopt;
-		auto result = parse_word(word);
+		auto result = parse_word(*_it);
 		if (result.empty())
 		{
-			auto new_word = make_shared<Word>(make_shared<Lexeme>(word));
-			new_word->errors.emplace("unknown word " + word);
+			auto new_word = make_shared<Word>(make_shared<Lexeme>(*_it));
+			new_word->errors.emplace("unknown word " + *_it);
 			result.emplace_back(move(new_word));
 		}
+		++_it;
 		return result;
 	}
 };
@@ -184,7 +185,7 @@ int main(int argc, char* argv[])
 		"a wish",
 		"my latest idea",
 		"computers are very expensive",
-		"do you sell old books?"
+		"do you sell old books"
 	};
 
 	int i = 0;

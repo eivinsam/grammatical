@@ -123,6 +123,7 @@
   <ItemGroup>
     <ClInclude Include="phrase.h" />
     <ClInclude Include="ranged.h" />
+    <ClInclude Include="tokens.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="lexemes.txt" />

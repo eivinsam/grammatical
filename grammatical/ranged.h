@@ -2,9 +2,36 @@
 
 #include <iterator>
 #include <optional>
+#include <vector>
 
 namespace ranged
 {
+	template <class T, class Enable = void>
+	struct DeduceRange { };
+
+	template <class T>
+	struct DeduceRange<T, std::void_t<decltype(std::begin(std::declval<T>()))>>
+	{
+		template <class U> static decltype(auto) begin(U&& a) { return std::begin(a); }
+		template <class U> static decltype(auto) end(U&& a) { return std::end(a); }
+	};
+	template <class IT>
+	struct DeduceRange<std::pair<IT, IT>, std::void_t<typename std::iterator_traits<IT>::iterator_category>>
+	{
+		template <class U> static decltype(auto) begin(U&& a) { return a.first; }
+		template <class U> static decltype(auto) end(U&& a) { return a.second; }
+	};
+
+	template <class C>
+	using Iterator = std::decay_t<decltype(DeduceRange<C>::begin(std::declval<C>()))>;
+	template <class C>
+	using Sentinel = std::decay_t<decltype(DeduceRange<C>::end(std::declval<C>()))>;
+
+	template <class C>
+	decltype(auto) begin(C&& c) { return DeduceRange<C>::begin(c); }
+	template <class C>
+	decltype(auto) end(C&& c) { return DeduceRange<C>::end(c); }
+
 
 	template <class IT>
 	struct InputInteratorTraits
@@ -66,85 +93,55 @@ namespace ranged
 	template <class IT, class S>
 	Range<IT, S> range(IT first, S last) { return { std::move(first), std::move(last) }; }
 
+	template <class IT, class S>
+	Range<IT, S> range(std::pair<IT, S> pair) { return { std::move(pair.first), std::move(pair.second) }; }
+
 	template <class F>
 	struct Mapping
 	{
+		template <class IT>
+		class Iterator
+		{
+			IT _it;
+			F _f;
+			std::optional<std::decay_t<decltype(std::declval<F>()(*std::declval<IT>()))>> _value;
+		public:
+			using iterator_category = std::input_iterator_tag;
+			using difference_type = typename std::iterator_traits<IT>::difference_type;
+			using value_type = const std::decay_t<decltype(*_value)>;
+			using reference = value_type & ;
+			using pointer = value_type * ;
+
+			Iterator(IT it, F f) : _it(std::move(it)), _f(std::move(f)) { }
+
+			Iterator& operator++() { ++_it; _value = std::nullopt; return *this; }
+
+			reference operator*() { if (!_value) _value = _f(*_it); return  *_value; }
+			pointer  operator->() { if (!_value) _value = _f(*_it); return &*_value; }
+
+			template <class S> bool operator==(S&& b) const { return _it == std::forward<S>(b); }
+			template <class S> bool operator!=(S&& b) const { return _it != std::forward<S>(b); }
+		};
+
 		F function;
+
+		template <class C, class IT = ranged::Iterator<C>>
+		Range<Iterator<IT>, Sentinel<C>> operator()(C&& c) const 
+		{
+			return { { begin(std::forward<C>(c)), function }, end(std::forward<C>(c)) };
+		}
 	};
 
 	template <class F>
 	Mapping<std::decay_t<F>> map(F&& f) { return { std::forward<F>(f) }; }
 
-	static constexpr struct {} keys = {};
-	static constexpr struct {} values = {};
+	static const auto keys = map([](auto&& pair) -> decltype(auto) { return pair.first; });
+	static const auto values = map([](auto&& pair) -> decltype(auto) { return pair.second; });
 
-	template <class IT, class F>
-	class MappedIterator
-	{
-		IT _it;
-		F _f;
-		std::optional<std::decay_t<decltype(std::declval<F>()(*std::declval<IT>()))>> _value;
-	public:
-		using iterator_category = std::input_iterator_tag;
-		using difference_type = typename std::iterator_traits<IT>::difference_type;
-		using value_type = const std::decay_t<decltype(*_value)>;
-		using reference = value_type&;
-		using pointer = value_type*;
-
-		MappedIterator(IT it, F f) : _it(std::move(it)), _f(std::move(f)) { }
-
-		MappedIterator& operator++() { ++_it; _value = std::nullopt; return *this; }
-
-		reference operator*() { if (!_value) _value = _f(*_it); return  *_value; }
-		pointer  operator->() { if (!_value) _value = _f(*_it); return &*_value; }
-
-		template <class S> bool operator==(S&& b) const { return _it == std::forward<S>(b); }
-		template <class S> bool operator!=(S&& b) const { return _it != std::forward<S>(b); }
-	};
-
-
-	template <class T, class Enable = void>
-	struct DeduceRange { };
-
-	template <class T>
-	struct DeduceRange<T, std::void_t<decltype(std::begin(std::declval<T>()))>>
-	{
-		using type = decltype(std::begin(std::declval<T>()));
-
-		static decltype(auto) begin(T& a) { return std::begin(a); }
-		static decltype(auto) end(T& a) { return std::end(a); }
-	};
-	template <class IT>
-	struct DeduceRange<std::pair<IT, IT>, std::void_t<typename std::iterator_traits<IT>::iterator_category>>
-	{
-		using T = std::pair<IT, IT>;
-		using type = IT;
-	
-		static const type& begin(T& a) { return a.first; }
-		static const type& end(T& a) { return a.second; }
-	};
-
-	template <class C>
-	using Iterator = typename DeduceRange<C>::type;
-	template <class C>
-	decltype(auto) begin(C&& c) { return DeduceRange<C>::begin(c); }
-	template <class C>
-	decltype(auto) end(C&& c) { return DeduceRange<C>::end(c); }
-
-	template <class C, class IT = Iterator<C>>
-	auto operator|(C&& c, decltype(keys))
-	{
-		return std::forward<C>(c) | map([](auto&& kv) { return kv.first; });
-	}
-	template <class C, class IT = Iterator<C>>
-	auto operator|(C&& c, decltype(values))
-	{
-		return std::forward<C>(c) | map([](auto&& kv) { return kv.second; });
-	}
 
 	template <class C, class F, class IT = Iterator<C>>
 	auto operator|(C&& c, Mapping<F> map)
 	{
-		return range(MappedIterator<IT, F>(begin(std::forward<C>(c)), std::move(map.function)), end(std::forward<C>(c)));
+		return map(std::forward<C>(c));
 	}
 }

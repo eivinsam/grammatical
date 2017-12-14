@@ -34,28 +34,29 @@ wish: nounsg
 English: adn
 expensive: adn
 latest: adn
+old: adn
 
 very: adad
 
-am:   pres.free :1.sg
-is:   pres.free :3.sg
-are:  pres.free :non13sg
-was:  past.free :13.sg
-were: past.free :non13sg
-been: past.part 
+am:   pres.free +akk|pres.part|adn :1.sg
+is:   pres.free +akk|pres.part|adn :3.sg
+are:  pres.free +akk|pres.part|adn :2|pl
+was:  past.free +akk|pres.part|adn :1.sg|2.sg
+were: past.free +akk|pres.part|adn :2|pl
+been: past.part +akk|pres.part|adn 
 
-do:    pres.free :non3sg
-does:  pres.free :3.sg
+do:    pres.free.dict +akk|pres.dict :1.sg|2.sg
+does:  pres.free      +akk|pres.dict :3.sg
 doing: pres.part
-did:   past.free :nom
+did:   past.free +akk|pres.dict :nom
 done:  past.part
 
-see: pres.fin :non3sg
+see: pres.fin :1.sg|2.sg
 sees: pres.fin :3.sg
 seeing: pres.part
 saw: past.fin :nom
 seen: past.part
-sell: pres.fin :non3sg
-sells: pres.fin :3.sg
+sell:  pres.fin +akk :1.sg|2.sg
+sells: pres.fin +akk :3.sg
 selling: pres.part
 sold: past.fin.part :nom
