@@ -74,7 +74,7 @@ public:
 	}
 };
 
-enum class Rel : char { is, spec, mod, comp };
+enum class Rel : char { is, spec, mod, comp, bicomp };
 
 class Phrase;
 struct Head : public std::shared_ptr<const Phrase> { };
@@ -97,53 +97,21 @@ public:
 	class And : public std::vector<ptr>
 	{
 	public:
-		template <Rel R>
-		bool matches(const ptr& p) const
+		bool contains(const ptr& p) const
 		{
-			if (!p)
-				return false;
 			for (auto&& e : *this)
-				if (e->matches<R>(p))
+				if (e->is(p))
 					return true;
 			return false;
-		}
-		template <Rel R>
-		bool matches(const And& b) const
-		{
-			if (b.empty())
-				return false;
-			for (auto&& p : b)
-				if (!matches<R>(p))
-					return false;
-			return true;
 		}
 	};
 	class Or : public std::vector<And>
 	{
 	public:
-		template <Rel R>
-		bool matches(const ptr& p) const
-		{
-			if (!p)
-				return false;
-			for (auto&& e : *this)
-				if (e.matches<R>(p))
-					return true;
-			return false;
-		}
-		template <Rel R>
-		bool matches(const And& b) const
+		bool contains(const ptr& p) const
 		{
 			for (auto&& e : *this)
-				if (e.matches<R>(b))
-					return true;
-			return false;
-		}
-		template <Rel R>
-		bool matches(const Or& b) const
-		{
-			for (auto&& be : b)
-				if (matches<R>(be))
+				if (e.contains(p))
 					return true;
 			return false;
 		}
@@ -180,33 +148,55 @@ public:
 					return true;
 		return false;
 	}
-	template <Rel R>
-	bool matches(const ptr& p) const 
+
+	struct MatchResult
 	{
-		if (this == p.get() || is().matches<R>(p))
-			return true;
-		auto rel = p->rels.find(R); 
-		return (rel != p->rels.end() && matches<Rel::is>(rel->second)) || 
-			matches<R>(p->is());
+		bool found;
+		bool noMismatch;
+
+		constexpr explicit operator bool() const { return found && noMismatch; }
+	};
+
+	template <Rel R>
+	MatchResult matches(const ptr& p) const 
+	{
+		if constexpr (R == Rel::is)
+			return { true, this == p.get() || is().contains(p) };
+
+		auto&& prel = p->_get_rel(R);
+		auto&& pis = p->is();
+		if (!prel.empty())
+			return { true, is(prel) && (pis.empty() || matches<R>(pis).noMismatch) };
+		else if (!pis.empty())
+			return matches<R>(pis);
+		else
+			return { false, true };
 	}
 	template <Rel R>
-	bool matches(const And& b) const
+	MatchResult matches(const And& b) const
 	{
-		if (b.empty())
-			return false;
+		bool found = false;
 		for (auto&& e : b)
-			if (!matches<R>(e))
-				return false;
-		return true;
+			if (auto match = matches<R>(e); match.noMismatch)
+				found |= match.found;
+			else
+				return match;
+		return { found, true };
 	}
 	template <Rel R>
-	bool matches(const Or&  b) const
+	MatchResult matches(const Or&  b) const
 	{
+		bool noMismatch = false;
 		for (auto&& e : b)
-			if (matches<R>(e))
-				return true;
-		return false;
+			if (const auto match = matches<R>(e))
+				return match;
+			else
+				noMismatch |= match.noMismatch;
+		return { false, noMismatch };
 	}
+	bool is(const ptr& p) const { return matches<Rel::is>(p).noMismatch; }
+	bool is(const And& b) const { return matches<Rel::is>(b).noMismatch; }
+	bool is(const  Or& b) const { return matches<Rel::is>(b).noMismatch; }
 };
 
 namespace tag
@@ -276,7 +266,7 @@ public:
 
 	string toString() const final
 	{
-		return "[" + mod->toString() + ' ' + type + head->toString() + "]";
+		return "[" + mod->toString() + type + ' ' + head->toString() + "]";
 	}
 };
 class RightBranch : public BinaryPhrase
@@ -287,7 +277,7 @@ public:
 
 	string toString() const final
 	{
-		return "[" + head->toString() + type + ' ' + mod->toString() + "]";
+		return "[" + head->toString() + ' ' + type + mod->toString() + "]";
 	}
 };
 

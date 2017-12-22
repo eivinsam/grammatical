@@ -188,7 +188,15 @@ int main(int argc, char* argv[])
 		"do you sell old books",
 		"we ate a lot of food",
 		"we bought some new furniture",
-		"that is useful information"
+		"that is useful information",
+		"he gave me some useful advice",
+		"they gave us a lot of information",
+		"let me give you some advice",
+		"let me give you a piece of advice",
+		"that is a useful piece of equipment",
+		"we bought a few bits of furniture for the new apartment",
+		"how much luggage have you got",
+		"she had six separate items of luggage"
 	};
 
 	int i = 0;

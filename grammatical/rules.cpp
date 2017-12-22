@@ -110,16 +110,34 @@ RuleOutput head_comp(const Head& head, const Mod& mod)
 	}
 	return {};
 }
+
 RuleOutput verb_comp(const Head& head, const Mod& mod)
 {
-	return append(head_comp(head, mod), head_prep(head, mod));
+	auto result = head_comp(head, mod);
+	if (result.empty())
+		result = head_prep(head, mod);
+	return result;
+}
+RuleOutput verb_bicomp(const Head& head, const Mod& mod)
+{
+	auto result = verb_comp(head, mod);
+	if (mod->is(tag::akk))
+	{
+		const auto match = merge(head->lex, head, '*', mod, head->left_rule, verb_comp);
+
+		if (!mod->lex->matches<Rel::bicomp>(head->lex))
+			match->errors.emplace("verb - indirect object disagreement");
+
+		result.emplace_back(match);
+	}
+	return result;
 }
 RuleOutput verb_rspec(const Head& head, const Mod& mod)
 {
-	auto result = verb_comp(head, mod);
+	auto result = verb_bicomp(head, mod);
 	if (mod->is(tag::nom))
 	{
-		const auto match = merge(head->lex, head, ':', mod, no_left, verb_comp);
+		const auto match = merge(head->lex, head, ':', mod, no_left, verb_bicomp);
 		
 		if (!mod->lex->matches<Rel::spec>(head->lex))
 			match->errors.emplace("noun-verb number/person disagreement");
@@ -140,7 +158,7 @@ Word::Word(Lexeme::ptr lexeme) : Phrase{ 1, move(lexeme),{} }
 	else if (lex->is(tag::verb))
 	{
 		left_rule = lex->is(tag::fin) ? verb_spec : no_left;
-		right_rule = lex->is(tag::free) ? verb_rspec : verb_comp;
+		right_rule = lex->is(tag::free) ? verb_rspec : verb_bicomp;
 	}
 	else if (lex->is(tag::adn))
 	{

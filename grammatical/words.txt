@@ -1,5 +1,17 @@
 the: gen.sg.pl.uc
 a: gen.sg
+one: gen.sg
+two: gen.pl
+three: gen.pl
+four: gen.pl
+five: gen.pl
+six: gen.pl
+seven: gen.pl
+eight: gen.pl
+nine: gen.pl
+ten: gen.pl
+eleven: gen.pl
+twelve: gen.pl
 some: gen.pl.uc|noun.pl
 this: gen.sg.uc|noun.sg
 that: gen.sg.uc|noun.sg
@@ -25,25 +37,41 @@ they: nom.3.pl
 them: akk.3.pl
 
 of: prep +akk
+for: prep +akk
 
+advice: nounuc
+apartment: nounsg
+apartments: nounpl
+bit: nounsg
+bits: nounpl
 book: nounsg
 books: nounpl
 computer: nounsg
 computers: nounpl
+equipment: nounuc
 food: nounuc
 furniture: nounuc
 idea: nounsg
 information: nounuc
+item: nounsg
+items: nounpl
+lot: nounsg
+lots: nounpl
+luggage: nounuc
+piece: nounsg
+pieces: nounpl
 teacher: nounsg
 wish: nounsg
+wishes: nounpl
 
-lot: nounsg <'of
 
 English: adn
 expensive: adn
+few: nom.akk.gen.pl :'a|'the|'these|'those
 latest: adn
 new: adn
 old: adn
+separate: adn
 useful: adn
 
 very: adad
@@ -61,21 +89,35 @@ doing: pres.part
 did:   past.free +akk|pres.dict :nom
 done:  past.part
 
-buy:    pres.fin +akk :1|2|pl
-buys:   pres.fin +akk :3.sg
+have: pres.free.dict +akk|past.part :1|2|pl
+has:  pres.free.dict +akk|past.part :3.sg
+had:  past.fin.part +akk|past.part :nom
+having: pres.part +akk|past.part
+
+buy:    pres.dict +akk :1|2|pl
+buys:   pres.fin  +akk :3.sg
 bought: past.fin.part +akk :nom
-buying: pres.part
-eat:  pres.fin +akk :1|2|pl
-eats: pres.fin +akk :3.sg
-ate:  past.fin +akk :nom
-eating: pres.part
-eate:   past.part
-see: pres.fin :1|2|pl
-sees: pres.fin :3.sg
-seeing: pres.part
-saw: past.fin :nom
-seen: past.part
-sell:  pres.fin +akk :1|2|pl
+buying: pres.part +akk
+eat:  pres.dict +akk :1|2|pl
+eats: pres.fin  +akk :3.sg
+ate:  past.fin  +akk :nom
+eating: pres.part +akk
+ate:    past.part +akk
+give:   give.pres.dict :1|2|pl
+gives:  give.pres.fin :3.sg
+gave:   give.past.fin :nom
+given:  give.past.part
+giving: give.pres.part
+let:    let.pres.dict :1|2|pl
+lets:   let.pres.fin :3.sg
+let:    let.past.fin.part :nom
+letting: let.pres.part
+see: pres.dict +akk :1|2|pl
+sees: pres.fin +akk :3.sg
+saw:  past.fin +akk :nom
+seen: past.part +akk
+seeing: pres.part +akk
+sell:  pres.dict +akk :1|2|pl
 sells: pres.fin +akk :3.sg
-selling: pres.part
-sold: past.fin.part :nom
+sold: past.fin.part +akk :nom
+selling: pres.part +akk

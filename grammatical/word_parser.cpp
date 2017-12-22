@@ -109,6 +109,7 @@ Lexeme::ptr parseLexeme(TokenIterator<Input>& it, const int line, Lexicon& lexic
 		{
 		case ':': ++it; lex->rels[Rel::spec] = read_dotlist(); continue;
 		case '+': ++it; lex->rels[Rel::comp] = read_dotlist(); continue;
+		case '*': ++it; lex->rels[Rel::bicomp] = read_dotlist(); continue;
 		case '<': ++it; lex->rels[Rel::mod]  = read_dotlist(); continue;
 		default: break;
 		}
