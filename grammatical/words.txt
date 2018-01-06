@@ -1,3 +1,10 @@
+s: suffix
+es: suffix
+ed: suffix
+ing: suffix
+y: suffix
+ies: suffix
+
 the: gen.sg.pl.uc
 a: gen.sg
 one: gen.sg
@@ -12,11 +19,11 @@ nine: gen.pl
 ten: gen.pl
 eleven: gen.pl
 twelve: gen.pl
-some: gen.pl.uc|noun.pl
-this: gen.sg.uc|noun.sg
-that: gen.sg.uc|noun.sg
-these: gen.pl|noun.pl
-those: gen.pl|noun.pl
+some: gen.pl.uc
+this: gen.sg.uc
+that: gen.sg.uc
+these: gen.pl
+those: gen.pl
 my: gen.sg.pl.uc
 your: gen.sg.pl.uc
 his: gen.sg.pl.uc
@@ -40,30 +47,23 @@ of: prep +akk
 for: prep +akk
 
 advice: nounuc
-apartment: nounsg
-apartments: nounpl
-bit: nounsg
-bits: nounpl
-book: nounsg
-books: nounpl
-computer: nounsg
-computers: nounpl
+apartment: nounrc
+bit: nounrc
+book: nounrc
+computer: nounrc
 equipment: nounuc
 everybody: noun.sg
 food: nounuc
 furniture: nounuc
-idea: nounsg
+idea: nounrc
 information: nounuc
-item: nounsg
-items: nounpl
-lot: nounsg
-lots: nounpl
+item: nounrc
+lot: nounrc
 luggage: nounuc
-piece: nounsg
-pieces: nounpl
-teacher: nounsg
-wish: nounsg
-wishes: nounpl
+piece: nounrc
+some: noun.pl
+teacher: nounrc
+wish: nounrc
 work: nounuc
 
 

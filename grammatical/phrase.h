@@ -74,7 +74,54 @@ public:
 	}
 };
 
-enum class Rel : char { is, spec, mod, comp, bicomp };
+
+enum class Tag : char
+{
+	suffix, 
+	prep, adv, adn, adad, 
+	sg, pl, uc, rc, 
+	first, second, third, 
+	nom, akk, gen,
+	pres, past, 
+	fin, part, free
+};
+
+class Tags
+{
+	unsigned _flags = 0;
+
+	static constexpr unsigned _flag(Tag b) { return 1 << static_cast<unsigned>(b); }
+
+	//static constexpr unsigned _count(unsigned flags)
+	//{
+	//	flags = ((flags & 0xaaaaaaaa) >> 1) + (flags & 0x55555555);
+	//	flags = ((flags & 0xcccccccc) >> 2) + (flags & 0x33333333);
+	//	flags = ((flags & 0xf0f0f0f0) >> 4) + (flags & 0x0f0f0f0f);
+	//	flags = ((flags & 0xff00ff00) >> 8) + (flags & 0x00ff00ff);
+	//	flags = ((flags & 0xffff0000) >> 16) + (flags & 0x0000ffff);
+	//	return flags;
+	//}
+
+	constexpr Tags(unsigned flags) : _flags(flags) { }
+
+public:
+	constexpr Tags() = default;
+	constexpr Tags(Tag b) : _flags(_flag(b)) { }
+
+	friend constexpr Tags operator|(Tag a, Tags b) { return { _flag(a) | b._flags }; }
+	friend constexpr Tags operator|(Tags a, Tag b) { return { a._flags | _flag(b) }; }
+	constexpr Tags operator|(Tags b) const { return { _flags | b._flags }; }
+
+	constexpr bool any(Tags b) const { return (_flags&b._flags) != 0; }
+	constexpr bool all(Tags b) const { return (_flags&b._flags) == b._flags; }
+
+	constexpr explicit operator bool() const { return _flags != 0; }
+};
+
+constexpr Tags operator|(Tag a, Tag b) { return Tags{} | a | b; }
+
+
+enum class Rel : char { spec, mod, comp, bicomp };
 
 class Phrase;
 struct Head : public std::shared_ptr<const Phrase> { };
@@ -94,9 +141,25 @@ class Lexeme
 public:
 	using string = std::string;
 	using ptr = std::shared_ptr<const Lexeme>;
-	class And : public std::vector<ptr>
+
+	class All : public std::vector<ptr>
 	{
 	public:
+		using std::vector<ptr>::vector;
+		All() = default;
+		All(std::vector<ptr>&& b) : std::vector<ptr>(move(b)) { }
+		All(const std::vector<ptr>& b) : std::vector<ptr>(b) { }
+	};
+
+	class Any : public std::vector<ptr>
+	{
+	public:
+		using std::vector<ptr>::vector;
+		Any() = default;
+		Any(std::vector<ptr>&& b) : std::vector<ptr>(move(b)) { }
+		Any(const std::vector<ptr>& b) : std::vector<ptr>(b) { }
+
+
 		bool contains(const ptr& p) const
 		{
 			for (auto&& e : *this)
@@ -105,117 +168,97 @@ public:
 			return false;
 		}
 	};
-	class Or : public std::vector<And>
-	{
-	public:
-		bool contains(const ptr& p) const
-		{
-			for (auto&& e : *this)
-				if (e.contains(p))
-					return true;
-			return false;
-		}
-	};
 private:
-	const Or& _get_rel(Rel rel) const
+	const Any& _get_rel(Rel rel) const
 	{
 		if (const auto found = rels.find(rel); found != rels.end())
 			return found->second;
 
-		static const Or empty;
+		static const Any empty;
 		return empty;
 	}
+	Tags _syn;
+	All  _sem;
+
+	bool _is_sem(const ptr& p) const
+	{
+		if (this == p.get())
+			return true;
+		for (auto&& ep : p->_sem)
+		{
+			for (auto&& e : _sem)
+				if (e->_is_sem(ep))
+					continue;
+			return false;
+		}
+		return true;
+	}
+
 public:
 
 	string name;
 
-	std::map<Rel, Or> rels;
+	std::map<Rel, Any> rels;
 
 	Lexeme(string name) : name(move(name)) { }
 
-	const Or& is()   const { return _get_rel(Rel::is); }
-	const Or& spec() const { return _get_rel(Rel::spec); }
-	const Or& comp() const { return _get_rel(Rel::comp); }
-	const Or& mod()  const { return _get_rel(Rel::mod); }
-
-	bool is(std::string_view n) const
+	void become(Tags b) { _syn = _syn | b; }
+	void become(const ptr& p)
 	{
-		if (name == n)
-			return true;
-		for (auto&& all : is())
-			for (auto&& p : all)
-				if (p && p->is(n))
-					return true;
+		become(p->_syn);
+		if (!p->_sem.empty() || !p->rels.empty())
+			_sem.emplace_back(p);
+	}
+	void become(const std::vector<ptr>& b)
+	{
+		_sem.reserve(_sem.size() + b.size());
+		for (auto&& e : b)
+			become(e);
+	}
+
+	const Any& spec() const { return _get_rel(Rel::spec); }
+	const Any& comp() const { return _get_rel(Rel::comp); }
+	const Any& mod()  const { return _get_rel(Rel::mod); }
+
+	bool is(Tags tags) const { return _syn.all(tags); }
+
+	bool is(const ptr& p) const { return is(p->_syn) && _is_sem(p); }
+	bool is(const Any& p) const 
+	{
+		for (auto&& e : p)
+			if (is(e))
+				return true;
 		return false;
 	}
 
-	struct MatchResult
-	{
-		bool found;
-		bool noMismatch;
-
-		constexpr explicit operator bool() const { return found && noMismatch; }
-	};
-
 	template <Rel R>
-	MatchResult matches(const ptr& p) const 
+	bool matches(const ptr& p) const 
 	{
-		if constexpr (R == Rel::is)
-			return { true, this == p.get() || is().contains(p) };
-
 		auto&& prel = p->_get_rel(R);
-		auto&& pis = p->is();
-		if (!prel.empty())
-			return { true, is(prel) && (pis.empty() || matches<R>(pis).noMismatch) };
-		else if (!pis.empty())
-			return matches<R>(pis);
-		else
-			return { false, true };
+		if (!prel.empty() && !is(prel))
+			return false;
+		if (!p->_sem.empty())
+			return matches<R>(p->_sem);
+		return true;
 	}
 	template <Rel R>
-	MatchResult matches(const And& b) const
+	bool matches(const All& b) const
 	{
-		bool found = false;
 		for (auto&& e : b)
-			if (auto match = matches<R>(e); match.noMismatch)
-				found |= match.found;
-			else
-				return match;
-		return { found, true };
+			if (!matches<R>(e))
+				return false;
+		return true;
 	}
 	template <Rel R>
-	MatchResult matches(const Or&  b) const
+	bool matches(const Any& b) const
 	{
-		bool noMismatch = false;
 		for (auto&& e : b)
-			if (const auto match = matches<R>(e))
-				return match;
-			else
-				noMismatch |= match.noMismatch;
-		return { false, noMismatch };
+			if (matches<R>(e))
+				return true;
+		return false;
 	}
-	bool is(const ptr& p) const { return matches<Rel::is>(p).noMismatch; }
-	bool is(const And& b) const { return matches<Rel::is>(b).noMismatch; }
-	bool is(const  Or& b) const { return matches<Rel::is>(b).noMismatch; }
 };
 
-namespace tag
-{
-	using namespace std::literals;
-	static constexpr auto prep = "prep"sv;
-	static constexpr auto verb = "verb"sv;
-	static constexpr auto pres = "pres"sv;
-	static constexpr auto past = "past"sv;
-	static constexpr auto part = "part"sv;
-	static constexpr auto free = "free"sv;
-	static constexpr auto fin = "fin"sv;
-	static constexpr auto gen = "gen"sv;
-	static constexpr auto akk = "akk"sv;
-	static constexpr auto nom = "nom"sv;
-	static constexpr auto adn = "adn"sv;
-	static constexpr auto adv = "adv"sv;
-	static constexpr auto adad = "adad"sv;
-}
 
 class Phrase
 {
@@ -238,7 +281,7 @@ public:
 
 	Chain<string> errors;
 
-	bool is(std::string_view name) const { return lex->is(name); }
+	bool is(Tags tags) const { return lex->is(tags); }
 	
 	virtual bool hasBranch(char type) const = 0;
 

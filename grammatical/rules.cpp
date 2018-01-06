@@ -19,7 +19,7 @@ decltype(auto) append(A&& a, B&& b)
 
 RuleOutput noun_det(const Mod& mod, const Head& head)
 {
-	if (mod->is(tag::gen))
+	if (mod->is(Tag::gen))
 	{
 		const auto result = merge(head->lex, mod, ':', head, no_left, no_right);
 
@@ -32,21 +32,21 @@ RuleOutput noun_det(const Mod& mod, const Head& head)
 
 RuleOutput ad_adad(const Mod& mod, const Head& head)
 {
-	if (mod->is(tag::adad))
+	if (mod->is(Tag::adad))
 		return { merge(head->lex, mod, '>', head, no_left, no_right) };
 	return {};
 }
 
 RuleOutput noun_adjective(const Mod& mod, const Head& head)
 {
-	if (mod->is(tag::adn))
+	if (mod->is(Tag::adn))
 		return { merge(head->lex, mod, '>', head, noun_adjective, no_right) };
 	return noun_det(mod, head);
 }
 
 RuleOutput head_prep(const Head& head, const Mod& mod)
 {
-	if (mod->is(tag::prep))
+	if (mod->is(Tag::prep))
 	{
 		const auto result = merge(head->lex, head, '<', mod, head->left_rule, head_prep);
 		if (!mod->lex->matches<Rel::mod>(head->lex))
@@ -60,17 +60,17 @@ RuleOutput head_prep(const Head& head, const Mod& mod)
 
 RuleOutput noun_rmod(const Head& head, const Mod& mod)
 {
-	if (mod->is(tag::part))
+	if (mod->is(Tag::part))
 	{
 		const auto result = merge(head->lex, head, '<', mod, noun_adjective, no_right);
 
-		if (!mod->is(tag::part))
+		if (!mod->is(Tag::part))
 			result->errors.emplace("verb right-modifying noun must be a participle");
 		else
 		{
-			if (mod->is(tag::past) && mod->hasBranch('+'))
+			if (mod->is(Tag::past) && mod->hasBranch('+'))
 				result->errors.emplace("past participle modifying noun can't have an object");
-			if (mod->is(tag::pres) && mod->hasBranch(':'))
+			if (mod->is(Tag::pres) && mod->hasBranch(':'))
 				result->errors.emplace("present participle modifying noun can't have subject");
 			if (dynamic_cast<const Word*>(mod.get()))
 				result->errors.emplace("verb phrase must be complex to right-modify a noun");
@@ -83,7 +83,7 @@ RuleOutput noun_rmod(const Head& head, const Mod& mod)
 
 RuleOutput verb_spec(const Mod& mod, const Head& head)
 {
-	if (mod->is(tag::nom))
+	if (mod->is(Tag::nom))
 	{
 		const auto result = merge(head->lex, mod, ':', head, no_left, no_right);
 
@@ -97,14 +97,14 @@ RuleOutput verb_spec(const Mod& mod, const Head& head)
 RuleOutput head_comp(const Head& head, const Mod& mod, RightRule next_right)
 {
 	auto result = next_right(head, mod);
-	if (mod->is(tag::akk) || mod->is(tag::verb) || mod->is(tag::adn))
+	if (mod->is(Tag::akk) || mod->is(Tag::fin) || mod->is(Tag::part) || mod->is(Tag::adn))
 	{
 		const auto match = merge(head->lex, head, '+', mod, head->left_rule, next_right);
 
 		if (!mod->lex->matches<Rel::comp>(head->lex))
 			match->errors.emplace("verb-object disagreement");
 
-		if (mod->is(tag::verb) && mod->hasBranch(':'))
+		if ((mod->is(Tag::fin) || mod->is(Tag::part)) && mod->hasBranch(':'))
 			match->errors.emplace("verbal object cannot have a subject");
 
 		result.emplace_back(match);
@@ -115,7 +115,7 @@ RuleOutput prep_comp(const Head& head, const Mod& mod) { return head_comp(head, 
 
 RuleOutput verb_adv(const Head& head, const Mod& mod)
 {
-	if (mod->is(tag::adv))
+	if (mod->is(Tag::adv))
 	{
 		const auto match = merge(head->lex, head, '<', mod, head->left_rule, head_prep);
 		if (!mod->lex->matches<Rel::mod>(head->lex))
@@ -132,7 +132,7 @@ RuleOutput verb_comp(const Head& head, const Mod& mod)
 RuleOutput verb_bicomp(const Head& head, const Mod& mod)
 {
 	auto result = verb_comp(head, mod);
-	if (mod->is(tag::akk))
+	if (mod->is(Tag::akk))
 	{
 		const auto match = merge(head->lex, head, '*', mod, head->left_rule, verb_comp);
 
@@ -146,7 +146,7 @@ RuleOutput verb_bicomp(const Head& head, const Mod& mod)
 RuleOutput verb_rspec(const Head& head, const Mod& mod)
 {
 	auto result = verb_bicomp(head, mod);
-	if (mod->is(tag::nom))
+	if (mod->is(Tag::nom))
 	{
 		const auto match = merge(head->lex, head, ':', mod, no_left, verb_bicomp);
 		
@@ -161,28 +161,44 @@ RuleOutput verb_rspec(const Head& head, const Mod& mod)
 
 Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, move(lexeme),{} }, _morph{ move(morph) }
 {
-	if (lex->is(tag::nom) || lex->is(tag::akk))
+	if (lex->is(Tag::nom) || lex->is(Tag::akk))
 	{
 		left_rule = noun_adjective;
 		right_rule = noun_rmod;
 	}
-	else if (lex->is(tag::verb))
+	else if (lex->is(Tag::fin) || lex->is(Tag::part))
 	{
-		left_rule = lex->is(tag::fin) ? verb_spec : no_left;
-		right_rule = lex->is(tag::free) ? verb_rspec : verb_bicomp;
+		left_rule = lex->is(Tag::fin) ? verb_spec : no_left;
+		right_rule = lex->is(Tag::free) ? verb_rspec : verb_bicomp;
 	}
-	else if (lex->is(tag::adn))
+	else if (lex->is(Tag::adn))
 	{
 		left_rule = ad_adad;
 	}
-	else if (lex->is(tag::prep))
+	else if (lex->is(Tag::prep))
 	{
 		left_rule = no_left;
 		right_rule = prep_comp;
 	}
 }
 
+RuleOutput noun_suffix(const Head& head, const Mod& mod)
+{
+	if (mod->is(Tag::suffix))
+	{
+		if (mod->lex->name == "s")
+		{
+			const auto match = merge(head->lex, head, '-', mod, no_left, no_right);
+			return { match };
+		}
+	}
+	return {};
+}
+
 Morpheme::Morpheme(Lexeme::ptr lexeme) : Phrase{ lexeme->name.size(), lexeme, {} }
 {
-
+	if (lex->is(Tag::rc))
+	{
+		right_rule = noun_suffix;
+	}
 }

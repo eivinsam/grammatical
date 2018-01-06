@@ -2,12 +2,9 @@ noun: nom.akk.3 <prep
 nounsg: noun.sg :sg
 nounpl: noun.pl :pl
 nounuc: noun.uc :uc
-pres: verb
-past: verb
+nounrc: noun.sg.rc :sg
 free: fin
 dict: fin
-adn: ad
-adv: ad
 
 give: *akk +akk
 let: *akk +akk|pres.dict

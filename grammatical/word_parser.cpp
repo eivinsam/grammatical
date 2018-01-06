@@ -34,100 +34,116 @@ static bool ignore_case_less(string_view a, string_view b)
 	return itb != endb;
 }
 
-using Lexicon = std::unordered_multimap<string, Lexeme::ptr>;
-
-template <class Input>
-Lexeme::ptr parseLexeme(TokenIterator<Input>& it, const int line, Lexicon& lexicon)
+class Lexicon : public std::unordered_multimap<string, Lexeme::ptr>
 {
-	const auto get_unique = [&]() -> Lexeme::ptr
+public:
+	Lexicon(std::initializer_list<std::pair<const char*, Tags>> init)
 	{
-		auto key = *it; ++it;
+		for (auto&& p : init)
+		{
+			auto lex = std::make_shared<Lexeme>(p.first);
+			lex->become(p.second);
+			emplace(p.first, move(lex));
+		}
+	}
+};
+
+template <class Input> 
+static auto read_dotlist(TokenIterator<Input>& it, const Lexicon& lexicon)
+{
+	vector<Lexeme::ptr> result;
+	for (;; ++it)
+	{
+		string key = *it; ++it;
 		if (key == "'" && isalpha(it->front()))
 		{
 			key += *it;
 			++it;
 		}
 		auto range = lexicon.equal_range(key);
-		Lexeme::ptr lex;
 		if (range.first == range.second)
-		{
-			lex = std::make_shared<Lexeme>(key);
-			lexicon.emplace(key, lex);
-		}
+			throw std::runtime_error("lexeme '" + key + "' not found");
+
+		Lexeme::ptr lex = range.first->second;
+
+		if (++range.first != range.second)
+			throw std::runtime_error("ignoring ambiguous lexeme '" + key + "' referred");
+
+		result.emplace_back(move(lex));
+		if (*it != ".")
+			return result;
+	}
+}
+
+template <class Input>
+static auto read_pipelist(TokenIterator<Input>& it, const Lexicon& lexicon)
+{
+	vector<Lexeme::ptr> result;
+	for (;; ++it)
+	{
+		auto dotlist = read_dotlist(it, lexicon);
+		assert(dotlist.size() > 0);
+		if (dotlist.size() == 1)
+			result.emplace_back(move(dotlist.front()));
 		else
 		{
-			lex = range.first->second;
-			++range.first;
+			auto meta = std::make_shared<Lexeme>("");
+			meta->become(move(dotlist));
+			result.emplace_back(move(meta));
 		}
-		if (range.first == range.second)
-			return lex;
+		if (*it != "|")
+			return result;
+	}
+}
 
-		std::cout << "ignoring ambiguous lexeme '" << key << "' referred on line " << line << "\n";
-		return nullptr;
-	};
-	const auto read_dotlist = [&]
-	{	
-		Lexeme::Or result;
-		for (bool more_or = true; !it.skipws(); )
-		{
-			if (auto lex = get_unique())
-			{
-				if (std::exchange(more_or, false))
-					result.emplace_back();
-				result.back().emplace_back(move(lex));
-			}
-			if (!it || it.isWhitespace() || it.isNewline()) break;
-			if (*it == "|")
-				more_or = true;
-			else if (*it != ".")
-			{
-				std::cout << "expected '.', '|', or whitespace";
-				it.flushLine();
-				break;
-			}
-			++it;
-		}
-		return result;
-	};
-
+template <class Input>
+Lexeme::ptr parseLexeme(TokenIterator<Input>& it, const int line, Lexicon& lexicon)
+{
 	if (it.isNewline() || it.isWhitespace()) ++it;
 	if (!it) return nullptr;
-	std::shared_ptr<Lexeme> lex = std::make_shared<Lexeme>(*it);
+	const auto lex = std::make_shared<Lexeme>(*it);
 	if ((++it).skipws()) return lex;
 
-	if (*it != ":")
-	{
-		std::cout << "expected ':' or newline after lexeme name on line " << line << "\n";
-		it.flushLine();
-		return lex;
-	}
-	++it;
 
-	while (it && !it.isNewline())
+	try
 	{
-		if (it.skipws()) 
-			return lex;
-		if (it->size() == 1) switch (it->front())
+		if (*it != ":")
 		{
-		case ':': ++it; lex->rels[Rel::spec] = read_dotlist(); continue;
-		case '+': ++it; lex->rels[Rel::comp] = read_dotlist(); continue;
-		case '*': ++it; lex->rels[Rel::bicomp] = read_dotlist(); continue;
-		case '<': ++it; lex->rels[Rel::mod]  = read_dotlist(); continue;
-		default: break;
+			it.flushLine();
+			throw std::runtime_error("expected ':' or newline after lexeme name");
 		}
-		if (isalnum(it->front()))
-		{
-			if (auto list = read_dotlist(); !list.empty())
-				lex->rels[Rel::is] = move(list);
-			continue;
-		}
-		std::cout << "unexpected relation '" << *it << "' on line " << line << "\n";
-		break;
-	}
-	while (it && !it.isNewline())
-	{
-		std::cout << "ignoring '" << *it << "' on line " << line << "\n";
 		++it;
+
+		while (it && !it.isNewline())
+		{
+			if (it.skipws())
+				return lex;
+			if (it->size() == 1) switch (it->front())
+			{
+			case ':': ++it; lex->rels[Rel::spec]   = read_pipelist(it, lexicon); continue;
+			case '+': ++it; lex->rels[Rel::comp]   = read_pipelist(it, lexicon); continue;
+			case '*': ++it; lex->rels[Rel::bicomp] = read_pipelist(it, lexicon); continue;
+			case '<': ++it; lex->rels[Rel::mod]    = read_pipelist(it, lexicon); continue;
+			default:
+				break;
+			}
+			if (isalnum(it->front()))
+			{
+				lex->become(read_dotlist(it, lexicon));
+				continue;
+			}
+			throw std::runtime_error("unexpected relation '" + *it + "'");
+			break;
+		}
+		while (it && !it.isNewline())
+		{
+			std::cout << "ignoring '" << *it << "' on line " << line << "\n";
+			++it;
+		}
+	}
+	catch (std::runtime_error& e)
+	{
+		std::cout << e.what() << " while reading '" << lex->name << "' on line " << line << "\n";
 	}
 	return lex;
 }
@@ -139,7 +155,17 @@ std::vector<Phrase::ptr> parse_word(string_view orth)
 {
 	static const auto lexicon = [&]
 	{
-		Lexicon result;
+		Lexicon result =
+		{
+			{ "suffix", Tag::suffix },
+			{ "prep", Tag::prep },
+			{ "adv", Tag::adv },{ "adn", Tag::adn },{ "adad", Tag::adad },
+			{ "sg", Tag::sg },{ "pl", Tag::pl },{ "uc", Tag::uc },{ "rc", Tag::rc },
+			{ "1", Tag::first },{ "2", Tag::second },{ "3", Tag::third },
+			{ "nom", Tag::nom },{ "akk", Tag::akk },{ "gen", Tag::gen },
+			{ "pres", Tag::pres },{ "past", Tag::past },
+			{ "part", Tag::part },{ "fin", Tag::fin }
+		};
 		int line = 1;
 		for (TokenIterator<std::ifstream> it("lexemes.txt"); it; ++it, ++line)
 		{
