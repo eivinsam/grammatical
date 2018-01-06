@@ -28,7 +28,8 @@ public:
 		auto result = parse_word(*_it);
 		if (result.empty())
 		{
-			auto new_word = make_shared<Word>(make_shared<Lexeme>(*_it));
+			const auto new_morph = make_shared<Morpheme>(make_shared<Lexeme>(*_it));
+			auto new_word = make_shared<Word>(new_morph->lex, new_morph);
 			new_word->errors.emplace("unknown word " + *_it);
 			result.emplace_back(move(new_word));
 		}

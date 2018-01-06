@@ -39,5 +39,9 @@ public:
 	void push(Phrase::ptr p);
 	void push(const Phrases& alternatives);
 
+	void insert(Phrase::ptr p, int from, int to);
+
+	size_t length() const { return _positions.size(); }
+
 	std::vector<Phrases> run();
 };

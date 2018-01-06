@@ -3,6 +3,7 @@
 #include "tokens.h"
 #include "parser.h"
 
+#include <cassert>
 #include <cctype>
 #include <unordered_map>
 #include <string>
@@ -133,7 +134,8 @@ Lexeme::ptr parseLexeme(TokenIterator<Input>& it, const int line, Lexicon& lexic
 
 
 
-vector<Phrase::ptr> parse_word(string_view orth)
+
+std::vector<Phrase::ptr> parse_word(string_view orth)
 {
 	static const auto lexicon = [&]
 	{
@@ -152,9 +154,47 @@ vector<Phrase::ptr> parse_word(string_view orth)
 		}
 		return result;
 	}();
+	struct OrthParser
+	{
+		Parser parser;
+		uint64_t checked = 0;
+		const string_view orth;
 
-	Parser parse;
+		OrthParser(string_view orth) : orth(orth) { }
 
+		void maybe_parse_rest(int from) // assuming this function will be inlined
+		{
+			if ((checked & (1 << from)) == 0)
+				parse_rest(from);
+		}
 
-	return lexicon.equal_range('\''+string(orth)) | ranged::values | ranged::map(std::make_shared<Word, const Lexeme::ptr&>);
+		void parse_rest(int from)
+		{
+			checked |= (1 << from);
+			for (int to = from; to < orth.size(); ++to)
+				for (auto&& e : lexicon.equal_range('\'' + string(orth.substr(from, to+1 - from))) | ranged::values)
+				{
+					parser.insert(std::make_shared<Morpheme>(e), from, to);
+					maybe_parse_rest(to+1);
+				}
+		}
+
+		std::vector<Phrase::ptr> parse()
+		{
+			assert(orth.size() < sizeof(checked)*8);
+			parse_rest(0);
+
+			auto results = parser.run();
+			if (results.size() == 1 && parser.length() == orth.size())
+				return results.front() | ranged::map([](Phrase::ptr p)
+			{
+				const auto m = std::dynamic_pointer_cast<const Morpheme>(p);
+				assert(m != nullptr);
+				return std::make_shared<Word>(m->lex, m);
+			});
+			return {};
+		}
+	};
+
+	return OrthParser{ orth }.parse();
 }

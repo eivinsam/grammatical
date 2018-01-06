@@ -1,4 +1,6 @@
 #include "parser.h"
+#include <cassert>
+
 void Parser::_match(const Phrase::ptr & a, const Phrase::ptr & b, int from, int to)
 {
 	for (auto match : a->right_rule(head(a), b))
@@ -42,6 +44,18 @@ void Parser::push(const Phrases & alternatives)
 	_top.clear();
 	for (auto&& p : alternatives)
 		_agenda.emplace(p, i, i);
+}
+
+void Parser::insert(Phrase::ptr p, int from, int to)
+{
+	assert(from >= 0);
+	assert(to >= from);
+	if (_positions.size() <= to)
+	{
+		_positions.resize(to + 1);
+		_top.clear();
+	}
+	_agenda.emplace(std::move(p), from, to);
 }
 
 std::vector<Parser::Phrases> Parser::run()

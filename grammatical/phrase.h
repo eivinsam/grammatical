@@ -285,13 +285,23 @@ public:
 
 
 
-class Word : public Phrase
+class Morpheme : public Phrase
 {
 public:
-	Word(Lexeme::ptr lex);
+	Morpheme(Lexeme::ptr lex);
 
 	bool hasBranch(char) const final { return false; }
 	string toString() const final { return lex->name; }
+};
+
+class Word : public Phrase
+{
+	Phrase::ptr _morph;
+public:
+	Word(Lexeme::ptr lex, Phrase::ptr morph);
+
+	bool hasBranch(char) const final { return false; }
+	string toString() const final { return _morph->toString(); }
 };
 
 

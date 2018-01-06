@@ -159,7 +159,7 @@ RuleOutput verb_rspec(const Head& head, const Mod& mod)
 }
 
 
-Word::Word(Lexeme::ptr lexeme) : Phrase{ 1, move(lexeme),{} }
+Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, move(lexeme),{} }, _morph{ move(morph) }
 {
 	if (lex->is(tag::nom) || lex->is(tag::akk))
 	{
@@ -180,4 +180,9 @@ Word::Word(Lexeme::ptr lexeme) : Phrase{ 1, move(lexeme),{} }
 		left_rule = no_left;
 		right_rule = prep_comp;
 	}
+}
+
+Morpheme::Morpheme(Lexeme::ptr lexeme) : Phrase{ lexeme->name.size(), lexeme, {} }
+{
+
 }
