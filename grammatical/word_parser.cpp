@@ -185,13 +185,15 @@ std::vector<Phrase::ptr> parse_word(string_view orth)
 			parse_rest(0);
 
 			auto results = parser.run();
-			if (results.size() == 1 && parser.length() == orth.size())
-				return results.front() | ranged::map([](Phrase::ptr p)
+			if (parser.length() == orth.size())
 			{
-				const auto m = std::dynamic_pointer_cast<const Morpheme>(p);
-				assert(m != nullptr);
-				return std::make_shared<Word>(m->lex, m);
-			});
+				std::vector<Phrase::ptr> result;
+				result.reserve(results.size());
+				for (auto&& r : results)
+					if (r.size() == 1)
+						result.emplace_back(std::make_shared<Word>(r.front()->lex, r.front()));
+				return result;
+			}
 			return {};
 		}
 	};
