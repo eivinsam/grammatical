@@ -114,6 +114,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="parser.cpp" />
     <ClCompile Include="rules.cpp" />
     <ClCompile Include="word_parser.cpp" />
   </ItemGroup>
@@ -121,6 +122,7 @@
     <Natvis Include="..\phrase.natvis" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="parser.h" />
     <ClInclude Include="phrase.h" />
     <ClInclude Include="ranged.h" />
     <ClInclude Include="tokens.h" />

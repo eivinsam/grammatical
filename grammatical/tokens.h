@@ -4,6 +4,7 @@
 
 #include <string>
 #include <memory>
+#include <sstream>
 
 template <class Input>
 class TokenIterator

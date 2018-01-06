@@ -94,29 +94,40 @@ RuleOutput verb_spec(const Mod& mod, const Head& head)
 	}
 	return {};
 }
-RuleOutput head_comp(const Head& head, const Mod& mod)
+RuleOutput head_comp(const Head& head, const Mod& mod, RightRule next_right)
 {
+	auto result = next_right(head, mod);
 	if (mod->is(tag::akk) || mod->is(tag::verb) || mod->is(tag::adn))
 	{
-		const auto result = merge(head->lex, head, '+', mod, head->left_rule, no_right);
+		const auto match = merge(head->lex, head, '+', mod, head->left_rule, next_right);
 
 		if (!mod->lex->matches<Rel::comp>(head->lex))
-			result->errors.emplace("verb-object disagreement");
+			match->errors.emplace("verb-object disagreement");
 
 		if (mod->is(tag::verb) && mod->hasBranch(':'))
-			result->errors.emplace("verbal object cannot have a subject");
+			match->errors.emplace("verbal object cannot have a subject");
 
-		return { result };
+		result.emplace_back(match);
 	}
-	return {};
+	return result;
+}
+RuleOutput prep_comp(const Head& head, const Mod& mod) { return head_comp(head, mod, no_right); }
+
+RuleOutput verb_adv(const Head& head, const Mod& mod)
+{
+	if (mod->is(tag::adv))
+	{
+		const auto match = merge(head->lex, head, '<', mod, head->left_rule, head_prep);
+		if (!mod->lex->matches<Rel::mod>(head->lex))
+			match->errors.emplace("verb not known to take this adverb");
+		return { match };
+	}
+	return head_prep(head, mod);
 }
 
 RuleOutput verb_comp(const Head& head, const Mod& mod)
 {
-	auto result = head_comp(head, mod);
-	if (result.empty())
-		result = head_prep(head, mod);
-	return result;
+	return head_comp(head, mod, verb_adv);
 }
 RuleOutput verb_bicomp(const Head& head, const Mod& mod)
 {
@@ -167,6 +178,6 @@ Word::Word(Lexeme::ptr lexeme) : Phrase{ 1, move(lexeme),{} }
 	else if (lex->is(tag::prep))
 	{
 		left_rule = no_left;
-		right_rule = verb_comp;
+		right_rule = prep_comp;
 	}
 }

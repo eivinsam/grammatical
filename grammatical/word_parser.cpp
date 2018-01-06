@@ -1,6 +1,7 @@
 #include "phrase.h"
 #include "ranged.h"
 #include "tokens.h"
+#include "parser.h"
 
 #include <cctype>
 #include <unordered_map>
@@ -131,7 +132,8 @@ Lexeme::ptr parseLexeme(TokenIterator<Input>& it, const int line, Lexicon& lexic
 }
 
 
-vector<shared_ptr<const Word>> parse_word(string_view orth)
+
+vector<Phrase::ptr> parse_word(string_view orth)
 {
 	static const auto lexicon = [&]
 	{
@@ -150,6 +152,8 @@ vector<shared_ptr<const Word>> parse_word(string_view orth)
 		}
 		return result;
 	}();
+
+	Parser parse;
 
 
 	return lexicon.equal_range('\''+string(orth)) | ranged::values | ranged::map(std::make_shared<Word, const Lexeme::ptr&>);

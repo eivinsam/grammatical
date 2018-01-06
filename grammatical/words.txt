@@ -49,6 +49,7 @@ books: nounpl
 computer: nounsg
 computers: nounpl
 equipment: nounuc
+everybody: noun.sg
 food: nounuc
 furniture: nounuc
 idea: nounsg
@@ -63,11 +64,13 @@ pieces: nounpl
 teacher: nounsg
 wish: nounsg
 wishes: nounpl
+work: nounuc
 
 
 English: adn
 expensive: adn
 few: nom.akk.gen.pl :'a|'the|'these|'those
+hard: adn
 latest: adn
 new: adn
 old: adn
@@ -91,7 +94,7 @@ done:  past.part
 
 have: pres.free.dict +akk|past.part :1|2|pl
 has:  pres.free.dict +akk|past.part :3.sg
-had:  past.fin.part +akk|past.part :nom
+had:  past.free.part +akk|past.part :nom
 having: pres.part +akk|past.part
 
 buy:    pres.dict +akk :1|2|pl
@@ -103,6 +106,10 @@ eats: pres.fin  +akk :3.sg
 ate:  past.fin  +akk :nom
 eating: pres.part +akk
 ate:    past.part +akk
+finish:  pres.dict +akk :1|2|pl
+finishes: pres.fin +akk :3.sg
+finished: past.fin.part +akk :nom
+finishing: pres.part +akk
 give:   give.pres.dict :1|2|pl
 gives:  give.pres.fin :3.sg
 gave:   give.past.fin :nom
@@ -121,3 +128,11 @@ sell:  pres.dict +akk :1|2|pl
 sells: pres.fin +akk :3.sg
 sold: past.fin.part +akk :nom
 selling: pres.part +akk
+watch: pres.dict :1|2|pl
+watches: pres.fin :3.sg
+watched: past.fin.part :nom
+watching: pres.part
+work: pres.dict +'hard :1|2|pl
+works: pres.fin +'hard :3.sg
+worked: past.fin.part +'hard :nom 
+working: pres.part +'hard

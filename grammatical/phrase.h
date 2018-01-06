@@ -213,6 +213,7 @@ namespace tag
 	static constexpr auto akk = "akk"sv;
 	static constexpr auto nom = "nom"sv;
 	static constexpr auto adn = "adn"sv;
+	static constexpr auto adv = "adv"sv;
 	static constexpr auto adad = "adad"sv;
 }
 
@@ -296,4 +297,4 @@ public:
 
 
 
-std::vector<std::shared_ptr<const Word>> parse_word(std::string_view orth);
+std::vector<Phrase::ptr> parse_word(std::string_view orth);
