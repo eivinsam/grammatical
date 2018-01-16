@@ -83,7 +83,9 @@ enum class Tag : char
 	first, second, third, 
 	nom, akk, gen,
 	pres, past, 
-	fin, part, free
+	fin, part, free,
+	rsg, rpast, rpart,
+	verbe, verby
 };
 
 class Tags
@@ -112,14 +114,27 @@ public:
 	friend constexpr Tags operator|(Tags a, Tag b) { return { a._flags | _flag(b) }; }
 	constexpr Tags operator|(Tags b) const { return { _flags | b._flags }; }
 
-	constexpr bool any(Tags b) const { return (_flags&b._flags) != 0; }
-	constexpr bool all(Tags b) const { return (_flags&b._flags) == b._flags; }
+	constexpr bool has(Tag b) const { return hasAny(b); }
+	constexpr bool hasAny(Tags b) const { return (_flags&b._flags) != 0; }
+	constexpr bool hasAll(Tags b) const { return (_flags&b._flags) == b._flags; }
+
+	constexpr void insert(Tags b) { _flags |=  b._flags; }
+	constexpr void remove(Tags b) { _flags &= ~b._flags; }
+
+	constexpr Tags select(Tags b) const { return { _flags & b._flags }; }
 
 	constexpr explicit operator bool() const { return _flags != 0; }
 };
 
 constexpr Tags operator|(Tag a, Tag b) { return Tags{} | a | b; }
 
+namespace tags
+{
+	static constexpr Tags number = Tag::sg | Tag::pl | Tag::uc;
+	static constexpr Tags person = Tag::first | Tag::second | Tag::third;
+	static constexpr Tags sg3 = Tag::sg | Tag::third;
+	static constexpr Tags verb_regularity = Tag::rsg | Tag::rpast | Tag::rpart;
+}
 
 enum class Rel : char { spec, mod, comp, bicomp };
 
@@ -177,16 +192,14 @@ private:
 		static const Any empty;
 		return empty;
 	}
-	Tags _syn;
-	All  _sem;
 
 	bool _is_sem(const ptr& p) const
 	{
 		if (this == p.get())
 			return true;
-		for (auto&& ep : p->_sem)
+		for (auto&& ep : p->sem)
 		{
-			for (auto&& e : _sem)
+			for (auto&& e : sem)
 				if (e->_is_sem(ep))
 					continue;
 			return false;
@@ -195,23 +208,27 @@ private:
 	}
 
 public:
-
 	string name;
+
+	Tags syn;
+	All  sem;
 
 	std::map<Rel, Any> rels;
 
 	Lexeme(string name) : name(move(name)) { }
 
-	void become(Tags b) { _syn = _syn | b; }
+	void remove(Tags b) { syn.remove(b); }
+
+	void become(Tags b) { syn.insert(b); }
 	void become(const ptr& p)
 	{
-		become(p->_syn);
-		if (!p->_sem.empty() || !p->rels.empty())
-			_sem.emplace_back(p);
+		become(p->syn);
+		if (!p->sem.empty() || !p->rels.empty())
+			sem.emplace_back(p);
 	}
 	void become(const std::vector<ptr>& b)
 	{
-		_sem.reserve(_sem.size() + b.size());
+		sem.reserve(sem.size() + b.size());
 		for (auto&& e : b)
 			become(e);
 	}
@@ -220,9 +237,7 @@ public:
 	const Any& comp() const { return _get_rel(Rel::comp); }
 	const Any& mod()  const { return _get_rel(Rel::mod); }
 
-	bool is(Tags tags) const { return _syn.all(tags); }
-
-	bool is(const ptr& p) const { return is(p->_syn) && _is_sem(p); }
+	bool is(const ptr& p) const { return syn.hasAll(p->syn) && _is_sem(p); }
 	bool is(const Any& p) const 
 	{
 		for (auto&& e : p)
@@ -237,8 +252,8 @@ public:
 		auto&& prel = p->_get_rel(R);
 		if (!prel.empty() && !is(prel))
 			return false;
-		if (!p->_sem.empty())
-			return matches<R>(p->_sem);
+		if (!p->sem.empty())
+			return matches<R>(p->sem);
 		return true;
 	}
 	template <Rel R>
@@ -281,7 +296,16 @@ public:
 
 	Chain<string> errors;
 
-	bool is(Tags tags) const { return lex->is(tags); }
+	bool has(Tag b) const { return lex->syn.has(b); }
+	bool hasAny(Tags b) const { return lex->syn.hasAny(b); }
+	bool hasAll(Tags b) const { return lex->syn.hasAll(b); }
+
+	struct AG
+	{
+		Tags tags;
+		bool with(const Phrase& b) const { return b.hasAll(tags); }
+	};
+	AG agreesOn(Tags tags) const { return { lex->syn.select(tags) }; }
 	
 	virtual bool hasBranch(char type) const = 0;
 

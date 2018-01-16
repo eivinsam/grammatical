@@ -3,8 +3,6 @@ nounsg: noun.sg :sg
 nounpl: noun.pl :pl
 nounuc: noun.uc :uc
 nounrc: noun.sg.rc :sg
-free: fin
-dict: fin
 
-give: *akk +akk
-let: *akk +akk|pres.dict
+verbrsg: pres.fin.1.2.pl.rsg
+verbr: verbrsg.rpast.rpart

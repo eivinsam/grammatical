@@ -1,39 +1,41 @@
 s: suffix
 es: suffix
 ed: suffix
+er: suffix
+ee: suffix
 ing: suffix
 y: suffix
 ies: suffix
 
 the: gen.sg.pl.uc
-a: gen.sg
-one: gen.sg
-two: gen.pl
-three: gen.pl
-four: gen.pl
-five: gen.pl
-six: gen.pl
-seven: gen.pl
-eight: gen.pl
-nine: gen.pl
-ten: gen.pl
-eleven: gen.pl
-twelve: gen.pl
-some: gen.pl.uc
-this: gen.sg.uc
-that: gen.sg.uc
-these: gen.pl
-those: gen.pl
-my: gen.sg.pl.uc
-your: gen.sg.pl.uc
-his: gen.sg.pl.uc
-her: gen.sg.pl.uc
+a:   gen.sg
+one:    nom.akk.adn.3.sg
+two:    nom.akk.adn.3.pl
+three:  nom.akk.adn.3.pl
+four:   nom.akk.adn.3.pl
+five:   nom.akk.adn.3.pl
+six:    nom.akk.adn.3.pl
+seven:  nom.akk.adn.3.pl
+eight:  nom.akk.adn.3.pl
+nine:   nom.akk.adn.3.pl
+ten:    nom.akk.adn.3.pl
+eleven: nom.akk.adn.3.pl
+twelve: nom.akk.adn.3.pl
+some: gen.nom.akk.3.pl.uc
+this: gen.nom.akk.3.sg.uc
+that: gen.nom.akk.3.sg.uc
+these: gen.nom.akk.3.pl
+those: gen.nom.akk.3.pl
+my:    gen.sg.pl.uc
+your:  gen.sg.pl.uc
+his:   gen.sg.pl.uc
+her:   gen.sg.pl.uc
 their: gen.sg.pl.uc
-our: gen.sg.pl.uc
-I: nom.1.sg
-me: akk.1.sg
+our:   gen.sg.pl.uc
+I:   nom.1.sg
+me:  akk.1.sg
 you: nom.akk.2.sg.pl
-he: nom.3.sg
+he:  nom.3.sg
 him: akk.3.sg
 she: nom.3.sg
 her: akk.3.sg
@@ -43,14 +45,14 @@ us: akk.1.pl
 they: nom.3.pl
 them: akk.3.pl
 
-of: prep +akk
-for: prep +akk
+of: prep
+for: prep
+
 
 advice: nounuc
 apartment: nounrc
 bit: nounrc
 book: nounrc
-computer: nounrc
 equipment: nounuc
 everybody: noun.sg
 food: nounuc
@@ -62,7 +64,6 @@ lot: nounrc
 luggage: nounuc
 piece: nounrc
 some: noun.pl
-teacher: nounrc
 wish: nounrc
 work: nounuc
 
@@ -79,60 +80,46 @@ useful: adn
 
 very: adad
 
-am:   pres.free +akk|pres.part|adn :1.sg
-is:   pres.free +akk|pres.part|adn :3.sg
-are:  pres.free +akk|pres.part|adn :2|pl
-was:  past.free +akk|pres.part|adn :1.sg|3.sg
-were: past.free +akk|pres.part|adn :2|pl
-been: past.part +akk|pres.part|adn 
+am:   pres.fin.1.sg
+are:  pres.fin.2.sg.pl
+is:   pres.fin.3.sg
+was:  past.fin.1.3.sg
+were: past.fin.2.pl
+been: past.part
 
-do:    pres.free.dict +akk|pres.dict :1|2|pl
-does:  pres.free      +akk|pres.dict :3.sg
+do:    pres.fin.1.2.pl
+does:  pres.fin.3.sg
+did:   past.fin
 doing: pres.part
-did:   past.free +akk|pres.dict :nom
 done:  past.part
 
-have: pres.free.dict +akk|past.part :1|2|pl
-has:  pres.free.dict +akk|past.part :3.sg
-had:  past.free.part +akk|past.part :nom
-having: pres.part +akk|past.part
+have: pres.fin.1.2.pl
+has:  pres.fin.3.sg
+had:  past.fin.part
+having: pres.part
 
-buy:    pres.dict +akk :1|2|pl
-buys:   pres.fin  +akk :3.sg
-bought: past.fin.part +akk :nom
-buying: pres.part +akk
-eat:  pres.dict +akk :1|2|pl
-eats: pres.fin  +akk :3.sg
-ate:  past.fin  +akk :nom
-eating: pres.part +akk
-ate:    past.part +akk
-finish:  pres.dict +akk :1|2|pl
-finishes: pres.fin +akk :3.sg
-finished: past.fin.part +akk :nom
-finishing: pres.part +akk
-give:   give.pres.dict :1|2|pl
-gives:  give.pres.fin :3.sg
-gave:   give.past.fin :nom
-given:  give.past.part
-giving: give.pres.part
-let:    let.pres.dict :1|2|pl
-lets:   let.pres.fin :3.sg
-let:    let.past.fin.part :nom
-letting: let.pres.part
-see: pres.dict +akk :1|2|pl
-sees: pres.fin +akk :3.sg
-saw:  past.fin +akk :nom
-seen: past.part +akk
-seeing: pres.part +akk
-sell:  pres.dict +akk :1|2|pl
-sells: pres.fin +akk :3.sg
-sold: past.fin.part +akk :nom
-selling: pres.part +akk
-watch: pres.dict :1|2|pl
-watches: pres.fin :3.sg
-watched: past.fin.part :nom
-watching: pres.part
-work: pres.dict +'hard :1|2|pl
-works: pres.fin +'hard :3.sg
-worked: past.fin.part +'hard :nom 
-working: pres.part +'hard
+buy:    verbr
+bought: past.fin.part
+comput: verbe
+eat:  verbr
+ate:  past.fin
+eaten: past.part
+finish:  verbr
+give:   verbrsg
+gave:   past.fin
+giving: pres.part
+given:  past.part
+let:    verbrsg
+letting: pres.part
+let:    past.fin.part
+see: verbrsg
+saw:  past.fin
+seeing: pres.part
+seen: past.part
+sell:  verbrsg
+selling: pres.part
+sold: past.fin.part
+teach: verbr
+taught: past.fin.part
+watch: verbr
+work: verbr

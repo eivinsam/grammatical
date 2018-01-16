@@ -164,7 +164,9 @@ std::vector<Phrase::ptr> parse_word(string_view orth)
 			{ "1", Tag::first },{ "2", Tag::second },{ "3", Tag::third },
 			{ "nom", Tag::nom },{ "akk", Tag::akk },{ "gen", Tag::gen },
 			{ "pres", Tag::pres },{ "past", Tag::past },
-			{ "part", Tag::part },{ "fin", Tag::fin }
+			{ "part", Tag::part },{ "fin", Tag::fin }, 
+			{ "rsg", Tag::rsg }, { "rpast", Tag::rpast }, { "rpart", Tag::rpart },
+			{ "verbe", Tag::verbe }, { "verby", Tag::verby }
 		};
 		int line = 1;
 		for (TokenIterator<std::ifstream> it("lexemes.txt"); it; ++it, ++line)
