@@ -7,6 +7,106 @@
 #include <vector>
 #include <string_view>
 
+template <class P, class IT, class S = IT>
+class SelectIterator
+{
+	P _pred;
+	IT _it;
+	S _end;
+
+	void _find_match()
+	{
+		while (_it != _end && !_pred(*_it))
+			++_it;
+	}
+public:
+	using iterator_category = std::forward_iterator_tag;
+	using difference_type = void;
+	using value_type = typename std::iterator_traits<IT>::value_type;
+	using reference = typename std::iterator_traits<IT>::reference;
+	using pointer = typename std::iterator_traits<IT>::pointer;
+
+	SelectIterator(P pred, IT it, S end) : _pred(std::move(pred)), _it(std::move(it)), _end(std::move(end)) { _find_match(); }
+
+	SelectIterator& operator++()
+	{
+		if (_it != _end)
+		{
+			++_it;
+			_find_match();
+		}
+	}
+
+	reference operator*() { return *_it; }
+	pointer operator->() { return &*_it; }
+
+	bool operator==(const S& b) const { return _it == b; }
+	bool operator!=(const S& b) const { return _it != b; }
+};
+
+
+template <class T>
+class Bag
+{
+	std::vector<T> _data;
+public:
+	using size_type = typename std::vector<T>::size_type;
+	using iterator = typename std::vector<T>::iterator;
+	using const_iterator = typename std::vector<T>::const_iterator;
+
+	template <class... Args>
+	T& emplace(Args&&... args) { return _data.emplace_back(std::forward<Args>(args)...); }
+
+	template <class P>
+	void erase(P&& pred)
+	{
+		for (auto it = _data.begin(); it != _data.end(); )
+		{
+			const auto next = std::next(it);
+			if (pred(*it))
+			{
+				if (next != _data.end())
+					*it = std::move(*next);
+				_data.pop_back();
+				continue;
+			}
+			it = next;
+		}
+	}
+	template <class P>
+	Bag<T> extract(P&& pred)
+	{
+		Bag<T> result;
+		for (auto it = _data.begin(); it != _data.end(); )
+		{
+			const auto next = std::next(it);
+			if (pred(*it))
+			{
+				result.emplace(std::move(*it));
+				if (next != _data.end())
+					*it = std::move(*next);
+				_data.pop_back();
+				continue;
+			}
+			it = next;
+		}
+		return result;
+	}
+
+	size_type size() const { return _data.size(); }
+
+	iterator begin() { return _data.begin(); }
+	iterator end() { return _data.end(); }
+
+	const_iterator begin() const { return _data.begin(); }
+	const_iterator end() const { return _data.end(); }
+
+	template <class P>
+	auto select(P&& pred) { return ranged::range(SelectIterator<P, iterator>(std::move(pred), begin(), end()), end()); }
+	template <class P>
+	auto select(P&& pred) const { return ranged::range(SelectIterator<P, const_iterator>(std::move(pred), begin(), end()), end()); }
+};
+
 
 template <class T>
 class Chain
@@ -74,7 +174,6 @@ public:
 	}
 };
 
-
 enum class Tag : char
 {
 	suffix, 
@@ -134,6 +233,9 @@ namespace tags
 	static constexpr Tags person = Tag::first | Tag::second | Tag::third;
 	static constexpr Tags sg3 = Tag::sg | Tag::third;
 	static constexpr Tags verb_regularity = Tag::rsg | Tag::rpast | Tag::rpart;
+
+	static constexpr Tags verbrsg = Tag::pres | Tag::fin | Tag::first | Tag::second | Tag::pl | Tag::rsg;
+	static constexpr Tags verbr = verbrsg | Tag::rpast | Tag::rpart;
 }
 
 enum class Rel : char { spec, mod, comp, bicomp };
@@ -184,15 +286,6 @@ public:
 		}
 	};
 private:
-	const Any& _get_rel(Rel rel) const
-	{
-		if (const auto found = rels.find(rel); found != rels.end())
-			return found->second;
-
-		static const Any empty;
-		return empty;
-	}
-
 	bool _is_sem(const ptr& p) const
 	{
 		if (this == p.get())
@@ -210,20 +303,13 @@ private:
 public:
 	string name;
 
-	Tags syn;
 	All  sem;
-
-	std::map<Rel, Any> rels;
 
 	Lexeme(string name) : name(move(name)) { }
 
-	void remove(Tags b) { syn.remove(b); }
-
-	void become(Tags b) { syn.insert(b); }
 	void become(const ptr& p)
 	{
-		become(p->syn);
-		if (!p->sem.empty() || !p->rels.empty())
+		if (!p->sem.empty())
 			sem.emplace_back(p);
 	}
 	void become(const std::vector<ptr>& b)
@@ -233,11 +319,7 @@ public:
 			become(e);
 	}
 
-	const Any& spec() const { return _get_rel(Rel::spec); }
-	const Any& comp() const { return _get_rel(Rel::comp); }
-	const Any& mod()  const { return _get_rel(Rel::mod); }
-
-	bool is(const ptr& p) const { return syn.hasAll(p->syn) && _is_sem(p); }
+	bool is(const ptr& p) const { return _is_sem(p); }
 	bool is(const Any& p) const 
 	{
 		for (auto&& e : p)
@@ -274,38 +356,42 @@ public:
 	}
 };
 
-
 class Phrase
 {
 public:
+	struct Arg
+	{
+		Rel rel;
+		Lexeme::ptr sem;
+
+		Arg(Rel rel, Lexeme::ptr sem) : rel(rel), sem(move(sem)) { }
+	};
+
 	using string = std::string;
 	using ptr = std::shared_ptr<const Phrase>;
 
-	Phrase(int length, Lexeme::ptr lex, Chain<string> errors, LeftRule l, RightRule r) 
-		: length(length), lex(move(lex)), errors(move(errors)), left_rule(l), right_rule(r) { }
-	Phrase(int length, Lexeme::ptr lex, Chain<string> errors) 
-		: length(length), lex(move(lex)), errors(move(errors)) { }
+	Phrase(int length, Tags syn, Lexeme::ptr lex, Chain<string> errors, LeftRule l = no_left, RightRule r = no_right) 
+		: length(length), syn(syn), sem(move(lex)), errors(move(errors)), left_rule(l), right_rule(r) { }
 	virtual ~Phrase() = default;
 
 	const int length;
 
-	Lexeme::ptr lex;
+	Tags syn;
+	Lexeme::ptr sem;
+	Bag<Arg> args;
+
 
 	LeftRule left_rule = no_left;
 	RightRule right_rule = no_right;
 
 	Chain<string> errors;
 
-	bool has(Tag b) const { return lex->syn.has(b); }
-	bool hasAny(Tags b) const { return lex->syn.hasAny(b); }
-	bool hasAll(Tags b) const { return lex->syn.hasAll(b); }
-
 	struct AG
 	{
 		Tags tags;
-		bool with(const Phrase& b) const { return b.hasAll(tags); }
+		bool with(const Phrase& b) const { return b.syn.hasAll(tags); }
 	};
-	AG agreesOn(Tags tags) const { return { lex->syn.select(tags) }; }
+	AG agreesOn(Tags tags) const { return { syn.select(tags) }; }
 	
 	virtual bool hasBranch(char type) const = 0;
 
@@ -315,8 +401,8 @@ public:
 class BinaryPhrase : public Phrase
 {
 public:
-	BinaryPhrase(Lexeme::ptr&& lex, char type, Head&& head, Mod&& mod, LeftRule l, RightRule r) :
-		Phrase(head->length + mod->length, move(lex), head->errors + mod->errors, l, r), 
+	BinaryPhrase(Tags syn, Lexeme::ptr&& lex, char type, Head&& head, Mod&& mod, LeftRule l, RightRule r) :
+		Phrase(head->length + mod->length, syn, move(lex), head->errors + mod->errors, l, r),
 		type(type), head(move(head)), mod(move(mod)) { }
 
 	const char type;
@@ -329,8 +415,8 @@ public:
 class LeftBranch : public BinaryPhrase
 {
 public:
-	LeftBranch(Lexeme::ptr lex, char type, Head head, Mod mod, LeftRule l, RightRule r)
-		: BinaryPhrase(move(lex), type, move(head), move(mod), l, r) { }
+	LeftBranch(Tags syn, Lexeme::ptr lex, char type, Head head, Mod mod, LeftRule l, RightRule r)
+		: BinaryPhrase(syn, move(lex), type, move(head), move(mod), l, r) { }
 
 	string toString() const final
 	{
@@ -340,8 +426,8 @@ public:
 class RightBranch : public BinaryPhrase
 {
 public:
-	RightBranch(Lexeme::ptr lex, char type, Head head, Mod mod, LeftRule l, RightRule r)
-		: BinaryPhrase(move(lex), type, move(head), move(mod), l, r) { }
+	RightBranch(Tags syn, Lexeme::ptr lex, char type, Head head, Mod mod, LeftRule l, RightRule r)
+		: BinaryPhrase(syn, move(lex), type, move(head), move(mod), l, r) { }
 
 	string toString() const final
 	{
@@ -355,10 +441,16 @@ public:
 class Morpheme : public Phrase
 {
 public:
-	Morpheme(Lexeme::ptr lex);
+	string orth;
+
+	Morpheme(string orth) : Phrase{ orth.size(),{},{},{} }, orth(move(orth)) { }
+
+	template <class S>
+	void update(S&& s) { update(s.syn, s.sem); }
+	void update(Tags syn, Lexeme::ptr sem);
 
 	bool hasBranch(char) const final { return false; }
-	string toString() const final { return lex->name; }
+	string toString() const final { return orth; }
 };
 
 class Word : public Phrase

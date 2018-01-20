@@ -49,28 +49,28 @@ of: prep
 for: prep
 
 
-advice: nounuc
-apartment: nounrc
-bit: nounrc
-book: nounrc
-equipment: nounuc
-everybody: noun.sg
-food: nounuc
-furniture: nounuc
-idea: nounrc
-information: nounuc
-item: nounrc
-lot: nounrc
-luggage: nounuc
-piece: nounrc
-some: noun.pl
-wish: nounrc
-work: nounuc
+advice: nom.akk.uc
+apartment: nom.akk.rc
+bit: nom.akk.rc
+book: nom.akk.rc
+equipment: nom.akk.uc
+everybody: nom.akk.sg
+food: nom.akk.uc
+furniture: nom.akk.uc
+idea: nom.akk.rc
+information: nom.akk.uc
+item: nom.akk.rc
+lot: nom.akk.rc
+luggage: nom.akk.uc
+piece: nom.akk.rc
+some: nom.akk.pl
+wish: nom.akk.rc
+work: nom.akk.uc
 
 
 English: adn
 expensive: adn
-few: nom.akk.gen.pl :'a|'the|'these|'those
+few: nom.akk.gen.pl
 hard: adn
 latest: adn
 new: adn

@@ -1,8 +1,0 @@
-noun: nom.akk.3 <prep
-nounsg: noun.sg :sg
-nounpl: noun.pl :pl
-nounuc: noun.uc :uc
-nounrc: noun.sg.rc :sg
-
-verbrsg: pres.fin.1.2.pl.rsg
-verbr: verbrsg.rpast.rpart

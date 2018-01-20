@@ -49,8 +49,5 @@
     <Text Include="words.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="lexemes.txt">
-      <Filter>Resource Files</Filter>
-    </Text>
   </ItemGroup>
 </Project>

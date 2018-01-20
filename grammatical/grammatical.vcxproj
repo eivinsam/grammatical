@@ -128,7 +128,6 @@
     <ClInclude Include="tokens.h" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="lexemes.txt" />
     <Text Include="words.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

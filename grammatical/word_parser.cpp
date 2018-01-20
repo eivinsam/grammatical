@@ -17,7 +17,13 @@ using std::vector;
 using std::string;
 using std::string_view;
 
-
+template <class C, class T>
+auto find(C&& c, const T& value) -> std::optional<decltype(c.find(value)->second)>
+{
+	if (auto found = c.find(value); found != c.end())
+		return found->second;
+	return {};
+}
 
 static bool ignore_case_less(string_view a, string_view b)
 {
@@ -34,32 +40,16 @@ static bool ignore_case_less(string_view a, string_view b)
 	return itb != endb;
 }
 
-class Lexicon : public std::unordered_multimap<string, Lexeme::ptr>
+struct Data
 {
-public:
-	Lexicon(std::initializer_list<std::pair<const char*, Tags>> init)
-	{
-		for (auto&& p : init)
-		{
-			auto lex = std::make_shared<Lexeme>(p.first);
-			lex->become(p.second);
-			emplace(p.first, move(lex));
-		}
-	}
-};
+	std::unordered_multimap<string, Lexeme::ptr> lexicon;
+	std::unordered_multimap<string, Phrase::ptr> dictionary;
 
-template <class Input> 
-static auto read_dotlist(TokenIterator<Input>& it, const Lexicon& lexicon)
-{
-	vector<Lexeme::ptr> result;
-	for (;; ++it)
+	using Input = std::ifstream;
+
+
+	auto get_lex(const string& key) const
 	{
-		string key = *it; ++it;
-		if (key == "'" && isalpha(it->front()))
-		{
-			key += *it;
-			++it;
-		}
 		auto range = lexicon.equal_range(key);
 		if (range.first == range.second)
 			throw std::runtime_error("lexeme '" + key + "' not found");
@@ -69,116 +59,147 @@ static auto read_dotlist(TokenIterator<Input>& it, const Lexicon& lexicon)
 		if (++range.first != range.second)
 			throw std::runtime_error("ignoring ambiguous lexeme '" + key + "' referred");
 
-		result.emplace_back(move(lex));
-		if (*it != ".")
-			return result;
+		return lex;
 	}
-}
 
-template <class Input>
-static auto read_pipelist(TokenIterator<Input>& it, const Lexicon& lexicon)
-{
-	vector<Lexeme::ptr> result;
-	for (;; ++it)
+	auto read_dotlist(TokenIterator<Input>& it) const
 	{
-		auto dotlist = read_dotlist(it, lexicon);
-		assert(dotlist.size() > 0);
-		if (dotlist.size() == 1)
-			result.emplace_back(move(dotlist.front()));
-		else
+		static const std::unordered_map<string, Tags> tag_lookup =
 		{
-			auto meta = std::make_shared<Lexeme>("");
-			meta->become(move(dotlist));
-			result.emplace_back(move(meta));
-		}
-		if (*it != "|")
-			return result;
-	}
-}
-
-template <class Input>
-Lexeme::ptr parseLexeme(TokenIterator<Input>& it, const int line, Lexicon& lexicon)
-{
-	if (it.isNewline() || it.isWhitespace()) ++it;
-	if (!it) return nullptr;
-	const auto lex = std::make_shared<Lexeme>(*it);
-	if ((++it).skipws()) return lex;
-
-
-	try
-	{
-		if (*it != ":")
+			{ "suffix", Tag::suffix },
+		{ "prep", Tag::prep },
+		{ "adv", Tag::adv },{ "adn", Tag::adn },{ "adad", Tag::adad },
+		{ "sg", Tag::sg },{ "pl", Tag::pl },{ "uc", Tag::uc },{ "rc", Tag::rc },
+		{ "1", Tag::first },{ "2", Tag::second },{ "3", Tag::third },
+		{ "nom", Tag::nom },{ "akk", Tag::akk },{ "gen", Tag::gen },
+		{ "pres", Tag::pres },{ "past", Tag::past },
+		{ "part", Tag::part },{ "fin", Tag::fin },
+		{ "rsg", Tag::rsg },{ "rpast", Tag::rpast },{ "rpart", Tag::rpart },
+		{ "verbe", Tag::verbe },{ "verby", Tag::verby },
+		{ "verbrsg", tags::verbrsg }, { "verbr", tags::verbr }
+		};
+		struct
 		{
-			it.flushLine();
-			throw std::runtime_error("expected ':' or newline after lexeme name");
-		}
-		++it;
-
-		while (it && !it.isNewline())
+			Tags syn;
+			Lexeme::ptr sem;
+		} result;
+		shared_ptr<Lexeme> meta;
+		for (;; ++it)
 		{
-			if (it.skipws())
-				return lex;
-			if (it->size() == 1) switch (it->front())
+			string key = *it; ++it;
+			if (auto value = find(tag_lookup, key))
 			{
-			case ':': ++it; lex->rels[Rel::spec]   = read_pipelist(it, lexicon); continue;
-			case '+': ++it; lex->rels[Rel::comp]   = read_pipelist(it, lexicon); continue;
-			case '*': ++it; lex->rels[Rel::bicomp] = read_pipelist(it, lexicon); continue;
-			case '<': ++it; lex->rels[Rel::mod]    = read_pipelist(it, lexicon); continue;
-			default:
+				result.syn.insert(*value);
+			}
+			else if (!result.sem)
+			{
+				result.sem = get_lex(key);
+			}
+			else
+			{
+				if (!meta)
+				{
+					meta = std::make_shared<Lexeme>("");
+					meta->become(move(result.sem));
+					result.sem = meta;
+				}
+				meta->become(get_lex(key));
+			}
+			if (*it != ".")
+				return result;
+		}
+	}
+
+	auto read_pipelist(TokenIterator<Input>& it) const 
+	{
+		vector<Lexeme::ptr> result;
+		for (;; ++it)
+		{
+			auto dotlist = read_dotlist(it);
+			assert(!dotlist.syn);
+			assert(dotlist.sem);
+			result.emplace_back(move(dotlist.sem));
+			if (*it != "|")
+				return result;
+		}
+	}
+
+	void parse_arg(Rel rel, TokenIterator<Input>& it, const shared_ptr<Morpheme>& m) const
+	{
+		for (auto&& l : read_pipelist(it))
+			m->args.emplace(rel, l);
+	}
+
+	shared_ptr<Morpheme> parseMorpheme(TokenIterator<Input>& it, const int line)
+	{
+
+		if (it.isNewline() || it.isWhitespace()) ++it;
+		if (!it) return nullptr;
+		const auto m = std::make_shared<Morpheme>(*it);
+		if ((++it).skipws()) return m;
+
+		try
+		{
+			if (*it != ":")
+			{
+				it.flushLine();
+				throw std::runtime_error("expected ':' or newline after lexeme name");
+			}
+			++it;
+
+			while (it && !it.isNewline())
+			{
+				if (it.skipws())
+					return m;
+				if (it->size() == 1) switch (it->front())
+				{
+				case ':': ++it; parse_arg(Rel::spec,   it, m); continue;
+				case '+': ++it; parse_arg(Rel::comp,   it, m); continue;
+				case '*': ++it; parse_arg(Rel::bicomp, it, m); continue;
+				case '<': ++it; parse_arg(Rel::mod,    it, m); continue;
+				default:
+					break;
+				}
+				if (isalnum(it->front()))
+				{
+					m->update(read_dotlist(it));
+					continue;
+				}
+				throw std::runtime_error("unexpected relation '" + *it + "'");
 				break;
 			}
-			if (isalnum(it->front()))
+			while (it && !it.isNewline())
 			{
-				lex->become(read_dotlist(it, lexicon));
-				continue;
+				std::cout << "ignoring '" << *it << "' on line " << line << "\n";
+				++it;
 			}
-			throw std::runtime_error("unexpected relation '" + *it + "'");
-			break;
 		}
-		while (it && !it.isNewline())
+		catch (std::runtime_error& e)
 		{
-			std::cout << "ignoring '" << *it << "' on line " << line << "\n";
-			++it;
+			std::cout << e.what() << " while reading '" << m->orth << "' on line " << line << "\n";
 		}
+		return m;
 	}
-	catch (std::runtime_error& e)
-	{
-		std::cout << e.what() << " while reading '" << lex->name << "' on line " << line << "\n";
-	}
-	return lex;
-}
 
-
+};
 
 
 std::vector<Phrase::ptr> parse_word(string_view orth)
 {
-	static const auto lexicon = [&]
+	static const auto data = [&]
 	{
-		Lexicon result =
-		{
-			{ "suffix", Tag::suffix },
-			{ "prep", Tag::prep },
-			{ "adv", Tag::adv },{ "adn", Tag::adn },{ "adad", Tag::adad },
-			{ "sg", Tag::sg },{ "pl", Tag::pl },{ "uc", Tag::uc },{ "rc", Tag::rc },
-			{ "1", Tag::first },{ "2", Tag::second },{ "3", Tag::third },
-			{ "nom", Tag::nom },{ "akk", Tag::akk },{ "gen", Tag::gen },
-			{ "pres", Tag::pres },{ "past", Tag::past },
-			{ "part", Tag::part },{ "fin", Tag::fin }, 
-			{ "rsg", Tag::rsg }, { "rpast", Tag::rpast }, { "rpart", Tag::rpart },
-			{ "verbe", Tag::verbe }, { "verby", Tag::verby }
-		};
+		Data result;
 		int line = 1;
-		for (TokenIterator<std::ifstream> it("lexemes.txt"); it; ++it, ++line)
-		{
-			if (auto lex = parseLexeme(it, line, result))
-				result.emplace(lex->name, lex);
-		}
-		line = 1;
+		//for (TokenIterator<std::ifstream> it("lexemes.txt"); it; ++it, ++line)
+		//{
+		//	if (auto lex = parseLexeme(it, line, result))
+		//		result.emplace(lex->name, lex);
+		//}
+		//line = 1;
 		for (TokenIterator<std::ifstream> it("words.txt"); it; ++it, ++line)
 		{
-			if (auto lex = parseLexeme(it, line, result))
-				result.emplace('\'' + lex->name, lex);
+			if (auto m = result.parseMorpheme(it, line))
+				result.dictionary.emplace(m->orth, m);
 		}
 		return result;
 	}();
@@ -200,9 +221,9 @@ std::vector<Phrase::ptr> parse_word(string_view orth)
 		{
 			checked |= (1 << from);
 			for (int to = from; to < orth.size(); ++to)
-				for (auto&& e : lexicon.equal_range('\'' + string(orth.substr(from, to+1 - from))) | ranged::values)
+				for (auto&& e : data.dictionary.equal_range(string(orth.substr(from, to+1 - from))) | ranged::values)
 				{
-					parser.insert(std::make_shared<Morpheme>(e), from, to);
+					parser.insert(e, from, to);
 					maybe_parse_rest(to+1);
 				}
 		}
@@ -219,7 +240,7 @@ std::vector<Phrase::ptr> parse_word(string_view orth)
 				result.reserve(results.size());
 				for (auto&& r : results)
 					if (r.size() == 1)
-						result.emplace_back(std::make_shared<Word>(r.front()->lex, r.front()));
+						result.emplace_back(std::make_shared<Word>(r.front()->sem, r.front()));
 				return result;
 			}
 			return {};
