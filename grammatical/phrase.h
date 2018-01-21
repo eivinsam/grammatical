@@ -35,6 +35,7 @@ public:
 			++_it;
 			_find_match();
 		}
+		return *this;
 	}
 
 	reference operator*() { return *_it; }
@@ -60,38 +61,40 @@ public:
 	template <class P>
 	void erase(P&& pred)
 	{
-		for (auto it = _data.begin(); it != _data.end(); )
+		for (size_t i = 0; i < _data.size(); )
 		{
-			const auto next = std::next(it);
-			if (pred(*it))
+			auto& e = _data[i];
+			if (pred(e))
 			{
-				if (next != _data.end())
-					*it = std::move(*next);
+				if (i+1 < _data.size())
+					e = std::move(_data.back());
 				_data.pop_back();
 				continue;
 			}
-			it = next;
+			++i;
 		}
 	}
 	template <class P>
 	Bag<T> extract(P&& pred)
 	{
 		Bag<T> result;
-		for (auto it = _data.begin(); it != _data.end(); )
+		for (size_t i = 0; i < _data.size(); )
 		{
-			const auto next = std::next(it);
-			if (pred(*it))
+			auto& e = _data[i];
+			if (pred(e))
 			{
-				result.emplace(std::move(*it));
-				if (next != _data.end())
-					*it = std::move(*next);
+				result.emplace(std::move(e));
+				if (i+1 < _data.size())
+					e = std::move(_data.back());
 				_data.pop_back();
 				continue;
 			}
-			it = next;
+			++i;
 		}
 		return result;
 	}
+
+	bool empty() const { return _data.empty(); }
 
 	size_type size() const { return _data.size(); }
 
@@ -309,8 +312,7 @@ public:
 
 	void become(const ptr& p)
 	{
-		if (!p->sem.empty())
-			sem.emplace_back(p);
+		sem.emplace_back(p);
 	}
 	void become(const std::vector<ptr>& b)
 	{
@@ -328,33 +330,17 @@ public:
 		return false;
 	}
 
-	template <Rel R>
-	bool matches(const ptr& p) const 
+	template <class C>
+	bool matchesAny(const C& c) const
 	{
-		auto&& prel = p->_get_rel(R);
-		if (!prel.empty() && !is(prel))
-			return false;
-		if (!p->sem.empty())
-			return matches<R>(p->sem);
-		return true;
-	}
-	template <Rel R>
-	bool matches(const All& b) const
-	{
-		for (auto&& e : b)
-			if (!matches<R>(e))
-				return false;
-		return true;
-	}
-	template <Rel R>
-	bool matches(const Any& b) const
-	{
-		for (auto&& e : b)
-			if (matches<R>(e))
+		for (auto&& e : c)
+			if (is(e))
 				return true;
 		return false;
 	}
 };
+
+using ErrorChain = Chain<std::string>;
 
 class Phrase
 {
@@ -369,6 +355,7 @@ public:
 
 	using string = std::string;
 	using ptr = std::shared_ptr<const Phrase>;
+	using mut_ptr = std::shared_ptr<Phrase>;
 
 	Phrase(int length, Tags syn, Lexeme::ptr lex, Chain<string> errors, LeftRule l = no_left, RightRule r = no_right) 
 		: length(length), syn(syn), sem(move(lex)), errors(move(errors)), left_rule(l), right_rule(r) { }
@@ -384,7 +371,7 @@ public:
 	LeftRule left_rule = no_left;
 	RightRule right_rule = no_right;
 
-	Chain<string> errors;
+	ErrorChain errors;
 
 	struct AG
 	{

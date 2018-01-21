@@ -60,10 +60,10 @@ int main(int argc, char* argv[])
 {
 	const char* sentences[] =
 	{
-		//"the book",
-		//"that English teacher",
-		//"a wish",
-		//"my latest idea",
+		"the book",
+		"that English teacher",
+		"a wish",
+		"my latest idea",
 		"computers are very expensive",
 		"do you sell old books",
 		"we ate a lot of food",

@@ -1,6 +1,23 @@
 #include "phrase.h"
 #include <unordered_map>
 
+namespace args
+{
+	template <Rel R>
+	bool rel(const Phrase::Arg& arg) { return arg.rel == R; }
+	static constexpr auto head = rel<Rel::spec>;
+	static constexpr auto mod = rel<Rel::mod>;
+	static constexpr auto comp = rel<Rel::comp>;
+	static constexpr auto bicomp = rel<Rel::bicomp>;
+
+	static auto sem = ranged::map([](const Phrase::Arg& arg) { return arg.sem; });
+
+	template <Rel R>
+	auto matching(const Lexeme::ptr& s)
+	{ 
+		return [s](const Phrase::Arg& arg) { return arg.rel == R && s->is(arg.sem); };
+	}
+}
 struct KeepHeadLexeme
 {
 	Lexeme::ptr operator()(Lexeme::ptr head) { return head; }
@@ -8,12 +25,16 @@ struct KeepHeadLexeme
 
 std::shared_ptr<LeftBranch> merge(const Mod& mod, char type, const Head& head, LeftRule l, RightRule r)
 {
-	return std::make_shared<LeftBranch>(head->syn, head->sem, type, head, mod, l, r);
+	auto result = std::make_shared<LeftBranch>(head->syn, head->sem, type, head, mod, l, r);
+	result->args = head->args;
+	return result;
 }
 
 std::shared_ptr<RightBranch> merge(const Head& head, char type, const Mod& mod, LeftRule l, RightRule r)
 {
-	return std::make_shared<RightBranch>(head->syn, head->sem, type, head, mod, l, r);
+	auto result = std::make_shared<RightBranch>(head->syn, head->sem, type, head, mod, l, r);
+	result->args = head->args;
+	return result;
 }
 
 bool subject_verb_agreement(const Mod& mod, const Head& head)
@@ -23,12 +44,13 @@ bool subject_verb_agreement(const Mod& mod, const Head& head)
 }
 bool subject_be_agreement(const Mod& mod, const Head& head)
 {
+	// being, been
 	if (head->syn.has(Tag::part))
 		return true;
-	if (head->syn.hasAll(Tag::pl | Tag::second) && !mod->syn.hasAny(Tag::pl | Tag::second))
-		return false;
-	if (head->syn.has(Tag::sg) && !mod->syn.has(Tag::sg))
-		return false;
+	// are, were
+	if (head->syn.hasAll(Tag::pl | Tag::second) && mod->syn.hasAny(Tag::pl | Tag::second))
+		return true; 
+	// am, is, was
 	return head->agreesOn(Tag::first | Tag::second | Tag::third).with(*mod);
 }
 
@@ -73,8 +95,14 @@ RuleOutput head_prep(const Head& head, const Mod& mod)
 	if (mod->syn.has(Tag::prep))
 	{
 		const auto result = merge(head, '<', mod, head->left_rule, head_prep);
+
+		if (auto arg_match = result->args.extract(args::matching<Rel::mod>(mod->sem)); 
+			arg_match.empty())
+			result->errors.emplace("preposition " + mod->toString() + " does not match " + head->toString());
+
 		if (!mod->hasBranch('+'))
-			result->errors.emplace("preposition has no complement");
+			result->errors.emplace("preposition " + mod->toString() + " modifying " + head->toString() +" has no complement");
+
 		return { result };
 	}
 	return {};
@@ -118,22 +146,50 @@ RuleOutput verb_spec(const Mod& mod, const Head& head)
 	}
 	return {};
 }
-RuleOutput head_comp(const Head& head, const Mod& mod, RightRule next_right)
+
+void check_verbal_object(const Head& head, const Mod& mod, const Phrase::mut_ptr& match)
 {
-	auto result = next_right(head, mod);
+	if (mod->syn.hasAny(Tag::fin | Tag::part) && mod->hasBranch(':'))
+		match->errors.emplace("verbal object to " + head->toString() + " cannot have subject");
+}
+
+template <RightRule NextRight>
+RuleOutput head_comp(const Head& head, const Mod& mod)
+{
+	auto result = NextRight(head, mod);
 	if (mod->syn.hasAny(Tag::akk | Tag::fin | Tag::part | Tag::adn))
 	{
-		const auto match = merge(head, '+', mod, head->left_rule, next_right);
+		const auto match = merge(head, '+', mod, head->left_rule, NextRight);
 
+		if (!mod->sem->matchesAny(head->args.select(args::comp) | args::sem))
+			match->errors.emplace("direct object " + mod->toString() + " does not match " + head->toString());
 
-		if (mod->syn.hasAny(Tag::fin | Tag::part) && mod->hasBranch(':'))
-			match->errors.emplace("verbal object cannot have a subject");
+		check_verbal_object(head, mod, match);
 
+		match->args.erase(args::comp);
 		result.emplace_back(match);
 	}
 	return result;
 }
-RuleOutput prep_comp(const Head& head, const Mod& mod) { return head_comp(head, mod, no_right); }
+template <RightRule NextRule>
+RuleOutput verb_bicomp(const Head& head, const Mod& mod)
+{
+	auto result = NextRule(head, mod);
+
+	if (mod->syn.hasAny(Tag::akk))
+	{
+		const auto match = merge(head, '*', mod, head->left_rule, NextRule);
+
+		if (!mod->sem || !mod->sem->matchesAny(head->args.select(args::bicomp) | args::sem))
+			match->errors.emplace("indirect object " + mod->toString() + " does not match " + head->toString());
+
+		check_verbal_object(head, mod, match);
+
+		match->args.erase(args::bicomp);
+		result.emplace_back(match);
+	}
+	return result;
+}
 
 RuleOutput verb_adv(const Head& head, const Mod& mod)
 {
@@ -146,35 +202,6 @@ RuleOutput verb_adv(const Head& head, const Mod& mod)
 	return head_prep(head, mod);
 }
 
-RuleOutput verb_comp(const Head& head, const Mod& mod)
-{
-	return head_comp(head, mod, verb_adv);
-}
-RuleOutput verb_bicomp(const Head& head, const Mod& mod)
-{
-	auto result = verb_comp(head, mod);
-	if (mod->syn.has(Tag::akk))
-	{
-		const auto match = merge(head, '*', mod, head->left_rule, verb_comp);
-
-		result.emplace_back(match);
-	}
-	return result;
-}
-RuleOutput verb_rspec(const Head& head, const Mod& mod)
-{
-	auto result = verb_bicomp(head, mod);
-	if (mod->syn.has(Tag::nom))
-	{
-		const auto match = merge(head, ':', mod, no_left, verb_bicomp);
-		
-		if (!subject_verb_agreement(mod, head))
-			match->errors.emplace("noun-verb number/person disagreement");
-
-		result.emplace_back(match);
-	}
-	return result;
-}
 
 RuleOutput be_lspec(const Mod& mod, const Head& head)
 {
@@ -182,47 +209,15 @@ RuleOutput be_lspec(const Mod& mod, const Head& head)
 	{
 		auto match = merge(mod, ':', head, no_left, no_right);
 		if (!subject_be_agreement(mod, head))
-			match->errors.emplace("subject does not agree with verb");
+			match->errors.emplace("subject " + mod->toString() + "does not agree with " + head->toString());
 		return { match };
 	}
 	return {};
 }
-RuleOutput be_comp(const Head& head, const Mod& mod)
-{
-	auto result = head_prep(head, mod);
-	if (mod->syn.hasAny(Tag::akk | Tag::adn))
-	{
-		result.emplace_back(merge(head, '+', mod, head->left_rule, head_prep));
-	}
-	else if (mod->syn.hasAny(Tag::fin | Tag::part))
-	{
-		auto match = merge(head, '+', mod, head->left_rule, head_prep);
-
-		if (!mod->syn.hasAll(Tag::fin | Tag::pres | Tag::pl))
-			match->errors.emplace("verb object of 'to be' must be dictionary form");
-
-		result.emplace_back(match);
-	}
-
-	return result;
-}
 
 
-RuleOutput be_rspec(const Head& head, const Mod& mod)
-{
-	auto result = be_comp(head, mod);
-	if (mod->syn.has(Tag::nom))
-	{
-		auto match = merge(head, ':', mod, no_left, be_comp);
-		if (!subject_be_agreement(mod, head))
-			match->errors.emplace("subject does not agree with verb");
-		result.emplace_back(match);
-	}
-	return result;
-}
-
-
-RuleOutput have_comp(const Head& head, const Mod& mod)
+template <Tag... Tense>
+RuleOutput aux_comp(const Head& head, const Mod& mod)
 {
 	auto result = head_prep(head, mod);
 	if (mod->syn.hasAny(Tag::akk))
@@ -233,24 +228,43 @@ RuleOutput have_comp(const Head& head, const Mod& mod)
 	{
 		auto match = merge(head, '+', mod, head->left_rule, head_prep);
 
-		if (!mod->syn.hasAll(Tag::past | Tag::part))
-			match->errors.emplace("verb object of 'to have' must be past participle");
+		if (!mod->syn.hasAll((Tense | ...)))
+			match->errors.emplace("tense of object " + mod->toString() + " does not agree with auxillary " + head->toString());
+
+		check_verbal_object(head, mod, match);
 
 		result.emplace_back(match);
 	}
 
 	return result;
+
 }
 
 
-RuleOutput have_rspec(const Head& head, const Mod& mod)
+RuleOutput be_rspec(const Head& head, const Mod& mod)
 {
-	auto result = have_comp(head, mod);
+	auto result = aux_comp<Tag::part>(head, mod);
+
 	if (mod->syn.has(Tag::nom))
 	{
-		auto match = merge(head, ':', mod, no_left, have_comp);
+		auto match = merge(head, ':', mod, no_left, aux_comp<Tag::part>);
+		if (!subject_be_agreement(mod, head))
+			match->errors.emplace("subject " + mod->toString() + " does not agree with verb " + head->toString());
+		result.emplace_back(match);
+	}
+	return result;
+}
+
+template <RightRule NextRule>
+RuleOutput aux_rspec(const Head& head, const Mod& mod)
+{
+	auto result = NextRule(head, mod);
+
+	if (mod->syn.has(Tag::nom))
+	{
+		auto match = merge(head, ':', mod, no_left, NextRule);
 		if (!subject_verb_agreement(mod, head))
-			match->errors.emplace("subject does not agree with verb");
+			match->errors.emplace("subject " + mod->toString() +" does not agree with verb " + head->toString());
 		result.emplace_back(match);
 	}
 	return result;
@@ -258,13 +272,23 @@ RuleOutput have_rspec(const Head& head, const Mod& mod)
 
 Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, morph->syn, move(lexeme),{} }, _morph{ morph }
 {
+	static constexpr auto have_right = aux_rspec<aux_comp<Tag::part, Tag::past>>;
+	static constexpr auto presf_aux_right = aux_rspec<aux_comp<Tag::fin, Tag::pres, Tag::pl>>;
+	args = _morph->args;
 	static const std::unordered_map<string, std::pair<LeftRule, RightRule>> special = 
 	{
-		{ "is",{ be_lspec, be_rspec} },
-		{ "have", { verb_spec, have_rspec }},
-		{ "has", { verb_spec, have_rspec }},
-		{ "had", { verb_spec, have_rspec }},
-		{ "having", { no_left, have_rspec }}
+		{ "is",{ be_lspec, be_rspec } },
+		{ "am",{ be_lspec, be_rspec } },
+		{ "are", { be_lspec, be_rspec } },
+		{ "have", { verb_spec, have_right }},
+		{ "has", { verb_spec, have_right }},
+		{ "had", { verb_spec, have_right }},
+		{ "having", { no_left, have_right }},
+		{ "do", { verb_spec, presf_aux_right }},
+		{ "does", { verb_spec, presf_aux_right }},
+		{ "did", { verb_spec, presf_aux_right }},
+		{ "doing", { no_left, presf_aux_right }},
+		{ "done", { no_left, presf_aux_right }}
 	};
 	if (auto m = std::dynamic_pointer_cast<const Morpheme>(_morph))
 		if (auto found = special.find(m->orth); found != special.end())
@@ -282,7 +306,7 @@ Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, morph->syn, move(
 		else if (syn.hasAny(Tag::fin | Tag::part))
 		{
 			left_rule = syn.has(Tag::fin) ? verb_spec : no_left;
-			right_rule = syn.has(Tag::free) ? verb_rspec : verb_bicomp;
+			right_rule = verb_bicomp<head_comp<verb_adv>>;
 		}
 		else if (syn.has(Tag::adn))
 		{
@@ -291,7 +315,7 @@ Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, morph->syn, move(
 		else if (syn.has(Tag::prep))
 		{
 			left_rule = no_left;
-			right_rule = prep_comp;
+			right_rule = head_comp<no_right>;
 		}
 	}
 }

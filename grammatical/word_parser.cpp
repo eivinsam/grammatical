@@ -47,6 +47,22 @@ struct Data
 
 	using Input = std::ifstream;
 
+	template <class... Args>
+	void addLex(string name, const Args&... args) 
+	{
+		auto lex = std::make_shared<Lexeme>(name);
+		(lex->become(lexicon.equal_range(args) | ranged::values), ...);
+		lexicon.emplace(lex->name, lex); 
+	}
+
+	Data()
+	{
+		addLex("to");
+		addLex("of");
+		addLex("for");
+		addLex("patient");
+		addLex("actor", "patient");
+	}
 
 	auto get_lex(const string& key) const
 	{
