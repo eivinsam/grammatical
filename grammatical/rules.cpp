@@ -1,4 +1,5 @@
 #include "phrase.h"
+#include <cassert>
 #include <unordered_map>
 
 namespace args
@@ -15,7 +16,13 @@ namespace args
 	template <Rel R>
 	auto matching(const Lexeme::ptr& s)
 	{ 
-		return [s](const Phrase::Arg& arg) { return arg.rel == R && s->is(arg.sem); };
+		return [=](const Phrase::Arg& arg) { return arg.rel == R && s->is(arg.sem); };
+	}
+
+	template <Rel R>
+	auto matching(Mark m, const Lexeme::ptr& s)
+	{
+		return [=](const Phrase::Arg& arg) { return arg.rel == R && arg.mark == m && s->is(arg.sem); };
 	}
 }
 struct KeepHeadLexeme
@@ -96,12 +103,20 @@ RuleOutput head_prep(const Head& head, const Mod& mod)
 	{
 		const auto result = merge(head, '<', mod, head->left_rule, head_prep);
 
-		if (auto arg_match = result->args.extract(args::matching<Rel::mod>(mod->sem)); 
-			arg_match.empty())
-			result->errors.emplace("preposition " + mod->toString() + " does not match " + head->toString());
+		if (auto branch = std::dynamic_pointer_cast<const BinaryPhrase>(mod))
+		{
+			assert(branch->type == '+');
+			if (const auto M = mark(branch->head->toString()); M && *M != Mark::None)
+			{
+				if (auto arg_match = result->args.extract(args::matching<Rel::mod>(*M, branch->mod->sem)); arg_match.empty())
+					result->errors.emplace("preposition " + mod->toString() + " does not match " + head->toString());
 
-		if (!mod->hasBranch('+'))
-			result->errors.emplace("preposition " + mod->toString() + " modifying " + head->toString() +" has no complement");
+			}
+			else
+				result->errors.emplace("preposition phrase " + head->toString() + " is not a valid mark");
+		}
+		else
+			result->errors.emplace("preposition " + mod->toString() + " modifying " + head->toString() + " has no complement");
 
 		return { result };
 	}

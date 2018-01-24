@@ -57,11 +57,10 @@ struct Data
 
 	Data()
 	{
-		addLex("to");
-		addLex("of");
-		addLex("for");
 		addLex("patient");
-		addLex("actor", "patient");
+		addLex("agent", "patient");
+		addLex("meal", "patient");
+		addLex("action");
 	}
 
 	auto get_lex(const string& key) const
@@ -97,13 +96,19 @@ struct Data
 		struct
 		{
 			Tags syn;
+			Mark mark = Mark::None;
 			Lexeme::ptr sem;
 		} result;
 		shared_ptr<Lexeme> meta;
 		for (;; ++it)
 		{
 			string key = *it; ++it;
-			if (auto value = find(tag_lookup, key))
+			if (auto value = mark(key); value && *value != Mark::None)
+			{
+				assert(result.mark == Mark::None);
+				result.mark = *value;
+			}
+			else if (auto value = find(tag_lookup, key))
 			{
 				result.syn.insert(*value);
 			}
@@ -126,24 +131,17 @@ struct Data
 		}
 	}
 
-	auto read_pipelist(TokenIterator<Input>& it) const 
+	void parse_arg(Rel rel, TokenIterator<Input>& it, const shared_ptr<Morpheme>& m) const
 	{
-		vector<Lexeme::ptr> result;
 		for (;; ++it)
 		{
 			auto dotlist = read_dotlist(it);
 			assert(!dotlist.syn);
 			assert(dotlist.sem);
-			result.emplace_back(move(dotlist.sem));
+			m->args.emplace(rel, dotlist.mark, move(dotlist.sem));
 			if (*it != "|")
-				return result;
+				return;
 		}
-	}
-
-	void parse_arg(Rel rel, TokenIterator<Input>& it, const shared_ptr<Morpheme>& m) const
-	{
-		for (auto&& l : read_pipelist(it))
-			m->args.emplace(rel, l);
 	}
 
 	shared_ptr<Morpheme> parseMorpheme(TokenIterator<Input>& it, const int line)

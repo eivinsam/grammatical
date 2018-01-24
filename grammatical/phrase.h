@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <map>
+#include <unordered_map>
 #include <vector>
 #include <string_view>
 
@@ -242,8 +243,26 @@ namespace tags
 }
 
 enum class Rel : char { spec, mod, comp, bicomp };
+enum class Mark : char { None, By, Of, To, For };
+
+inline std::optional<Mark> mark(std::string_view n)
+{
+	using namespace std::string_view_literals;
+	static const std::unordered_map<std::string_view, Mark> lookup =
+	{
+		{ "none"sv, Mark::None },
+		{ "by"sv, Mark::By },
+		{ "of"sv, Mark::Of },
+		{ "to"sv, Mark::To },
+		{ "for"sv, Mark::For }
+	};
+	if (auto found = lookup.find(n); found != lookup.end())
+		return found->second;
+	return {};
+}
 
 class Phrase;
+class BinaryPhrase;
 struct Head : public std::shared_ptr<const Phrase> { };
 using Mod = std::shared_ptr<const Phrase>;
 
@@ -348,9 +367,10 @@ public:
 	struct Arg
 	{
 		Rel rel;
+		Mark mark;
 		Lexeme::ptr sem;
 
-		Arg(Rel rel, Lexeme::ptr sem) : rel(rel), sem(move(sem)) { }
+		Arg(Rel rel, Mark mark, Lexeme::ptr sem) : rel(rel), mark(mark), sem(move(sem)) { }
 	};
 
 	using string = std::string;
@@ -380,7 +400,8 @@ public:
 	};
 	AG agreesOn(Tags tags) const { return { syn.select(tags) }; }
 	
-	virtual bool hasBranch(char type) const = 0;
+	virtual bool hasBranch(char type) const { return false; }
+	virtual const BinaryPhrase* getBranch(char type) const { return nullptr; }
 
 	virtual string toString() const = 0;
 };
@@ -397,6 +418,7 @@ public:
 	const Mod mod;
 
 	bool hasBranch(char t) const final { return t == type || head->hasBranch(t); }
+	const BinaryPhrase* getBranch(char t) const final { return t == type ? this : head->getBranch(t); }
 };
 
 class LeftBranch : public BinaryPhrase
@@ -436,7 +458,6 @@ public:
 	void update(S&& s) { update(s.syn, s.sem); }
 	void update(Tags syn, Lexeme::ptr sem);
 
-	bool hasBranch(char) const final { return false; }
 	string toString() const final { return orth; }
 };
 
@@ -446,7 +467,6 @@ class Word : public Phrase
 public:
 	Word(Lexeme::ptr lex, Phrase::ptr morph);
 
-	bool hasBranch(char) const final { return false; }
 	string toString() const final { return _morph->toString(); }
 };
 
