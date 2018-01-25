@@ -57,10 +57,10 @@ struct Data
 
 	Data()
 	{
-		addLex("patient");
-		addLex("agent", "patient");
-		addLex("meal", "patient");
-		addLex("action");
+		//addLex("patient");
+		//addLex("agent", "patient");
+		//addLex("meal", "patient");
+		//addLex("action");
 	}
 
 	auto get_lex(const string& key) const
@@ -131,7 +131,8 @@ struct Data
 		}
 	}
 
-	void parse_arg(Rel rel, TokenIterator<Input>& it, const shared_ptr<Morpheme>& m) const
+	template <class T>
+	void parse_arg(Rel rel, TokenIterator<Input>& it, const shared_ptr<T>& m) const
 	{
 		for (;; ++it)
 		{
@@ -144,13 +145,15 @@ struct Data
 		}
 	}
 
-	shared_ptr<Morpheme> parseMorpheme(TokenIterator<Input>& it, const int line)
+	template <class T>
+	shared_ptr<T> parse(TokenIterator<Input>& it, const int line)
 	{
 
 		if (it.isNewline() || it.isWhitespace()) ++it;
 		if (!it) return nullptr;
-		const auto m = std::make_shared<Morpheme>(*it);
-		if ((++it).skipws()) return m;
+		const auto key = *it;
+		const auto item = std::make_shared<T>(key);
+		if ((++it).skipws()) return item;
 
 		try
 		{
@@ -164,19 +167,19 @@ struct Data
 			while (it && !it.isNewline())
 			{
 				if (it.skipws())
-					return m;
+					return item;
 				if (it->size() == 1) switch (it->front())
 				{
-				case ':': ++it; parse_arg(Rel::spec,   it, m); continue;
-				case '+': ++it; parse_arg(Rel::comp,   it, m); continue;
-				case '*': ++it; parse_arg(Rel::bicomp, it, m); continue;
-				case '<': ++it; parse_arg(Rel::mod,    it, m); continue;
+				case ':': ++it; parse_arg(Rel::spec,   it, item); continue;
+				case '+': ++it; parse_arg(Rel::comp,   it, item); continue;
+				case '*': ++it; parse_arg(Rel::bicomp, it, item); continue;
+				case '<': ++it; parse_arg(Rel::mod,    it, item); continue;
 				default:
 					break;
 				}
 				if (isalnum(it->front()))
 				{
-					m->update(read_dotlist(it));
+					item->update(read_dotlist(it));
 					continue;
 				}
 				throw std::runtime_error("unexpected relation '" + *it + "'");
@@ -190,9 +193,9 @@ struct Data
 		}
 		catch (std::runtime_error& e)
 		{
-			std::cout << e.what() << " while reading '" << m->orth << "' on line " << line << "\n";
+			std::cout << e.what() << " while reading '" << key << "' on line " << line << "\n";
 		}
-		return m;
+		return item;
 	}
 
 };
@@ -204,15 +207,15 @@ std::vector<Phrase::ptr> parse_word(string_view orth)
 	{
 		Data result;
 		int line = 1;
-		//for (TokenIterator<std::ifstream> it("lexemes.txt"); it; ++it, ++line)
-		//{
-		//	if (auto lex = parseLexeme(it, line, result))
-		//		result.emplace(lex->name, lex);
-		//}
-		//line = 1;
+		for (TokenIterator<std::ifstream> it("lexemes.txt"); it; ++it, ++line)
+		{
+			if (auto lex = result.parse<Lexeme>(it, line))
+				result.lexicon.emplace(lex->name, lex);
+		}
+		line = 1;
 		for (TokenIterator<std::ifstream> it("words.txt"); it; ++it, ++line)
 		{
-			if (auto m = result.parseMorpheme(it, line))
+			if (auto m = result.parse<Morpheme>(it, line))
 				result.dictionary.emplace(m->orth, m);
 		}
 		return result;

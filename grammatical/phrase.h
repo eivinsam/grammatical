@@ -2,6 +2,7 @@
 
 #include "ranged.h"
 
+#include <cassert>
 #include <memory>
 #include <map>
 #include <unordered_map>
@@ -275,6 +276,16 @@ using RightRule = RuleOutput(*)(const Head&, const Mod&);
 inline RuleOutput no_left(const Mod&, const Head&) { return {}; }
 inline RuleOutput no_right(const Head&, const Mod&) { return {}; }
 
+class Lexeme;
+struct Argument
+{
+	Rel rel;
+	Mark mark;
+	std::shared_ptr<const Lexeme> sem;
+
+	Argument(Rel rel, Mark mark, std::shared_ptr<const Lexeme> sem) : rel(rel), mark(mark), sem(move(sem)) { }
+};
+
 class Lexeme
 {
 public:
@@ -327,7 +338,20 @@ public:
 
 	All  sem;
 
+	Bag<Argument> args;
+
 	Lexeme(string name) : name(move(name)) { }
+
+	template <class T>
+	void update(T&& value)
+	{
+		assert(!value.syn);
+		assert(value.sem);
+		if (value.sem->name == "")
+			sem = std::move(value.sem->sem);
+		else
+			sem = { std::move(value.sem) };
+	}
 
 	void become(const ptr& p)
 	{
@@ -364,15 +388,6 @@ using ErrorChain = Chain<std::string>;
 class Phrase
 {
 public:
-	struct Arg
-	{
-		Rel rel;
-		Mark mark;
-		Lexeme::ptr sem;
-
-		Arg(Rel rel, Mark mark, Lexeme::ptr sem) : rel(rel), mark(mark), sem(move(sem)) { }
-	};
-
 	using string = std::string;
 	using ptr = std::shared_ptr<const Phrase>;
 	using mut_ptr = std::shared_ptr<Phrase>;
@@ -385,7 +400,7 @@ public:
 
 	Tags syn;
 	Lexeme::ptr sem;
-	Bag<Arg> args;
+	Bag<Argument> args;
 
 
 	LeftRule left_rule = no_left;
@@ -449,13 +464,14 @@ public:
 
 class Morpheme : public Phrase
 {
+	void _add_args(const Lexeme& s);
 public:
 	string orth;
 
 	Morpheme(string orth) : Phrase{ orth.size(),{},{},{} }, orth(move(orth)) { }
 
 	template <class S>
-	void update(S&& s) { update(s.syn, s.sem); }
+	void update(S&& s) { update(s.syn, std::move(s.sem)); }
 	void update(Tags syn, Lexeme::ptr sem);
 
 	string toString() const final { return orth; }

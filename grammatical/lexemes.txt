@@ -1,0 +1,5 @@
+patient:
+agent: patient
+action: <for.agent
+
+meal: patient

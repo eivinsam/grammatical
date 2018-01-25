@@ -5,24 +5,24 @@
 namespace args
 {
 	template <Rel R>
-	bool rel(const Phrase::Arg& arg) { return arg.rel == R; }
+	bool rel(const Argument& arg) { return arg.rel == R; }
 	static constexpr auto head = rel<Rel::spec>;
 	static constexpr auto mod = rel<Rel::mod>;
 	static constexpr auto comp = rel<Rel::comp>;
 	static constexpr auto bicomp = rel<Rel::bicomp>;
 
-	static auto sem = ranged::map([](const Phrase::Arg& arg) { return arg.sem; });
+	static auto sem = ranged::map([](const Argument& arg) { return arg.sem; });
 
 	template <Rel R>
 	auto matching(const Lexeme::ptr& s)
 	{ 
-		return [=](const Phrase::Arg& arg) { return arg.rel == R && s->is(arg.sem); };
+		return [=](const Argument& arg) { return arg.rel == R && s->is(arg.sem); };
 	}
 
 	template <Rel R>
 	auto matching(Mark m, const Lexeme::ptr& s)
 	{
-		return [=](const Phrase::Arg& arg) { return arg.rel == R && arg.mark == m && s->is(arg.sem); };
+		return [=](const Argument& arg) { return arg.rel == R && arg.mark == m && s->is(arg.sem); };
 	}
 }
 struct KeepHeadLexeme
@@ -393,10 +393,21 @@ RuleOutput verb_suffix(const Head& head, const Mod& mod)
 	return {};
 }
 
+void Morpheme::_add_args(const Lexeme& s)
+{
+	for (auto&& a : s.args)
+		args.emplace(a);
+	for (auto&& ss : s.sem)
+		_add_args(*ss);
+}
+
 void Morpheme::update(Tags new_syn, Lexeme::ptr new_sem)
 {
 	syn = new_syn;
 	sem = move(new_sem);
+
+	if (sem)
+		_add_args(*sem);
 
 	if (syn.has(Tag::rc))
 	{

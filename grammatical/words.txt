@@ -81,45 +81,45 @@ useful: adn
 
 very: adad
 
-am:   pres.fin.1.sg <for.agent
-are:  pres.fin.2.sg.pl <for.agent
-is:   pres.fin.3.sg <for.agent
-was:  past.fin.1.3.sg <for.agent
-were: past.fin.2.pl <for.agent
-been: past.part <for.agent
+am:   pres.fin.1.sg
+are:  pres.fin.2.sg.pl
+is:   pres.fin.3.sg
+was:  past.fin.1.3.sg
+were: past.fin.2.pl
+been: past.part
 
-do:    pres.fin.1.2.pl <for.agent
-does:  pres.fin.3.sg <for.agent
-did:   past.fin <for.agent
-doing: pres.part <for.agent
-done:  past.part <for.agent
+do:    pres.fin.1.2.pl
+does:  pres.fin.3.sg
+did:   past.fin
+doing: pres.part
+done:  past.part
 
-have: pres.fin.1.2.pl <for.agent
-has:  pres.fin.3.sg <for.agent
-had:  past.fin.part <for.agent
-having: pres.part <for.agent
+have: pres.fin.1.2.pl
+has:  pres.fin.3.sg
+had:  past.fin.part
+having: pres.part
 
-buy:    verbr         +patient *agent <for.agent
-bought: past.fin.part +patient *agent <for.agent
-comput: verbe +patient <for.agent
-eat:  verbr    +patient <for.agent
+buy:    verbr         +patient *agent
+bought: past.fin.part +patient *agent
+comput: verbe +patient
+eat:  verbr    +patient
 ate:  past.fin +patient <for.meal
 eaten: past.part +patient <for.meal
-finish:  verbr +patient <for.agent
-give:   verbrsg   +patient *agent <for.agent
-gave:   past.fin  +patient *agent <for.agent
-giving: pres.part +patient *agent <for.agent
-given:  past.part +patient *agent <for.agent
+finish:  verbr +patient
+give:   verbrsg   +patient *agent
+gave:   past.fin  +patient *agent
+giving: pres.part +patient *agent
+given:  past.part +patient *agent
 let:    verbrsg.past.part +patient *agent
 letting: pres.part        +patient *agent
-see: verbrsg      +patient <for.agent
-saw: past.fin     +patient <for.agent
-seeing: pres.part +patient <for.agent
-seen:   past.part +patient <for.agent
-sell:     verbrsg   +patient <for.agent
-selling:  pres.part +patient <for.agent
-sold: past.fin.part	+patient <for.agent
-teach: verbr +to.action *agent <for.agent
-taught: past.fin.part +to.action *agent <for.agent
-watch: verbr +patient  <for.agent
-work: verbr <for.agent
+see: verbrsg      +patient
+saw: past.fin     +patient
+seeing: pres.part +patient
+seen:   past.part +patient
+sell:     verbrsg   +patient
+selling:  pres.part +patient
+sold: past.fin.part	+patient
+teach: verbr +to.action *agent
+taught: past.fin.part +to.action *agent
+watch: verbr +patient 
+work: verbr
