@@ -72,7 +72,7 @@ work: nom.akk.uc.patient
 English: adn
 expensive: adn
 few: nom.akk.gen.pl
-hard: adn
+hard: adn.hard
 latest: adn
 new: adn
 old: adn
@@ -81,45 +81,45 @@ useful: adn
 
 very: adad
 
-am:   pres.fin.1.sg
-are:  pres.fin.2.sg.pl
-is:   pres.fin.3.sg
-was:  past.fin.1.3.sg
-were: past.fin.2.pl
-been: past.part
+am:   action.pres.fin.1.sg    +patient|action
+are:  action.pres.fin.2.sg.pl +patient|action
+is:   action.pres.fin.3.sg    +patient|action
+was:  action.past.fin.1.3.sg  +patient|action
+were: action.past.fin.2.pl    +patient|action
+been: action.past.part        +patient|action
 
-do:    pres.fin.1.2.pl
-does:  pres.fin.3.sg
-did:   past.fin
-doing: pres.part
-done:  past.part
+do:    action.pres.fin.1.2.pl +action
+does:  action.pres.fin.3.sg   +action
+did:   action.past.fin        +action
+doing: action.pres.part       +action
+done:  action.past.part       +action
 
-have: pres.fin.1.2.pl
-has:  pres.fin.3.sg
-had:  past.fin.part
-having: pres.part
+have:   action.pres.fin.1.2.pl +patient|action
+has:    action.pres.fin.3.sg   +patient|action
+had:    action.past.fin.part   +patient|action
+having: action.pres.part       +patient|action
 
-buy:    verbr         +patient *agent
-bought: past.fin.part +patient *agent
-comput: verbe +patient
-eat:  verbr    +patient
-ate:  past.fin +patient <for.meal
-eaten: past.part +patient <for.meal
-finish:  verbr +patient
-give:   verbrsg   +patient *agent
-gave:   past.fin  +patient *agent
-giving: pres.part +patient *agent
-given:  past.part +patient *agent
-let:    verbrsg.past.part +patient *agent
-letting: pres.part        +patient *agent
-see: verbrsg      +patient
-saw: past.fin     +patient
-seeing: pres.part +patient
-seen:   past.part +patient
-sell:     verbrsg   +patient
-selling:  pres.part +patient
-sold: past.fin.part	+patient
-teach: verbr +to.action *agent
-taught: past.fin.part +to.action *agent
-watch: verbr +patient 
-work: verbr
+buy:      action.verbr         +patient *agent
+bought:   action.past.fin.part +patient *agent
+comput:   action.verbe +patient
+eat:      action.verbr    +patient
+ate:      action.past.fin +patient <for.meal
+eaten:    action.past.part +patient <for.meal
+finish:   action.verbr +patient
+give:     action.verbrsg   +patient *agent
+gave:     action.past.fin  +patient *agent
+giving:   action.pres.part +patient *agent
+given:    action.past.part +patient *agent
+let:      action.verbrsg.past.part +patient *agent
+letting:  action.pres.part        +patient *agent
+see:      action.verbrsg      +patient
+saw:      action.past.fin     +patient
+seeing:   action.pres.part +patient
+seen:     action.past.part +patient
+sell:     action.verbrsg   +patient
+selling:  action.pres.part +patient
+sold:     action.past.fin.part	+patient
+teach:    action.verbr +to.action *agent
+taught:   action.past.fin.part +to.action *agent
+watch:    action.verbr +patient 
+work:     action.verbr +hard

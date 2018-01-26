@@ -176,7 +176,7 @@ RuleOutput head_comp(const Head& head, const Mod& mod)
 	{
 		const auto match = merge(head, '+', mod, head->left_rule, NextRight);
 
-		if (!mod->sem->matchesAny(head->args.select(args::comp) | args::sem))
+		if (!mod->sem || !mod->sem->matchesAny(head->args.select(args::comp) | args::sem))
 			match->errors.emplace("direct object " + mod->toString() + " does not match " + head->toString());
 
 		check_verbal_object(head, mod, match);
@@ -368,13 +368,13 @@ RuleOutput verb_suffix(const Head& head, const Mod& mod)
 		{
 			return { merge(head, '-', mod, no_left, noun_suffix)
 				- (Tag::fin | tags::person | tags::number | tags::verb_regularity)
-				+ (Tag::part | Tag::pres | Tag::nom | Tag::akk | tags::sg3 | Tag::rc | Tag::adn) };
+				+ (Tag::part | Tag::pres) };
 		}
 		if (morph->orth== "ed")
 		{
 			auto match = merge(head, '-', mod, no_left, noun_suffix)
 				- (Tag::fin | tags::person | tags::number | tags::verb_regularity)
-				+ (Tag::past | Tag::fin | Tag::part | Tag::nom | Tag::akk | tags::sg3 | Tag::rc | Tag::adn);
+				+ (Tag::past | Tag::fin | Tag::part);
 			if (!head->syn.has(Tag::rpast))
 				match->syn.remove(Tag::fin);
 			if (!head->syn.has(Tag::rpart))
