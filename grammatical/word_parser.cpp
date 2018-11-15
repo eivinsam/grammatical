@@ -87,11 +87,15 @@ struct Data
 		{ "sg", Tag::sg },{ "pl", Tag::pl },{ "uc", Tag::uc },{ "rc", Tag::rc },
 		{ "1", Tag::first },{ "2", Tag::second },{ "3", Tag::third },
 		{ "nom", Tag::nom },{ "akk", Tag::akk },{ "gen", Tag::gen },
-		{ "pres", Tag::pres },{ "past", Tag::past },
+		{ "pres", Tag::pres },{ "past", Tag::past }, {"dict", Tag::dict }, { "modal", Tag::modal },
 		{ "part", Tag::part },{ "fin", Tag::fin },
 		{ "rsg", Tag::rsg },{ "rpast", Tag::rpast },{ "rpart", Tag::rpart },
 		{ "verbe", Tag::verbe },{ "verby", Tag::verby },
-		{ "verbrsg", tags::verbrsg }, { "verbr", tags::verbr }
+		{ "verbrsg", tags::verbrsg }, { "verbr", tags::verbr },
+		{ "pressg", Tag::fin | Tag::pres | tags::sg3 },
+		{ "prespl", Tag::fin | Tag::pres | tags::nonsg3 | Tag::dict },
+		{ "modalpres", Tag::modal | Tag::fin | Tag::pres | tags::sg3 | tags::nonsg3 },
+		{ "modalpast", Tag::modal | Tag::fin | Tag::past }
 		};
 		struct
 		{

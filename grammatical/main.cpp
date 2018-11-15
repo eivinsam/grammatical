@@ -60,6 +60,8 @@ int main(int argc, char* argv[])
 {
 	const char* sentences[] =
 	{
+		"have arrived",
+		"they will come",
 		"the book",
 		"that English teacher",
 		"a wish",
@@ -84,7 +86,18 @@ int main(int argc, char* argv[])
 		"he has finished work",
 		"has he finished work",
 		"everybody had been working hard",
-		"had everybody been working hard"
+		"had everybody been working hard",
+		"will they come",
+		"he might come",
+		"might he come",
+		"they will have arrived by now",
+		"will they have arrived by now",
+		"she would have been listening",
+		"would she have been listening",
+		"the work will be finished soon",
+		"will the work be finished soon",
+		"they might have been invited to the party",
+		"might they have been invited to the party"
 	};
 
 	int i = 0;

@@ -47,7 +47,8 @@ std::shared_ptr<RightBranch> merge(const Head& head, char type, const Mod& mod, 
 bool subject_verb_agreement(const Mod& mod, const Head& head)
 {
 	return !head->syn.hasAll(Tag::pres | Tag::fin) ||
-		head->syn.hasAll(tags::sg3) == mod->syn.hasAll(tags::sg3);
+		(head->syn.hasAll(tags::nonsg3) && mod->syn.hasAny(tags::nonsg3)) || 
+		(head->syn.hasAll(tags::sg3) && mod->syn.hasAll(tags::sg3));
 }
 bool subject_be_agreement(const Mod& mod, const Head& head)
 {
@@ -164,15 +165,15 @@ RuleOutput verb_spec(const Mod& mod, const Head& head)
 
 void check_verbal_object(const Head& head, const Mod& mod, const Phrase::mut_ptr& match)
 {
-	if (mod->syn.hasAny(Tag::fin | Tag::part) && mod->hasBranch(':'))
+	if (mod->syn.hasAny(Tag::part | Tag::dict) && mod->hasBranch(':'))
 		match->errors.emplace("verbal object to " + head->toString() + " cannot have subject");
 }
 
-template <RightRule NextRight>
+template <Tag VerbType, RightRule NextRight>
 RuleOutput head_comp(const Head& head, const Mod& mod)
 {
 	auto result = NextRight(head, mod);
-	if (mod->syn.hasAny(Tag::akk | Tag::fin | Tag::part | Tag::adn))
+	if (mod->syn.hasAny(Tag::akk | Tag::adn | VerbType))
 	{
 		const auto match = merge(head, '+', mod, head->left_rule, NextRight);
 
@@ -321,7 +322,9 @@ Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, morph->syn, move(
 		else if (syn.hasAny(Tag::fin | Tag::part))
 		{
 			left_rule = syn.has(Tag::fin) ? verb_spec : no_left;
-			right_rule = verb_bicomp<head_comp<verb_adv>>;
+			right_rule = syn.has(Tag::modal) ? 
+				aux_rspec<verb_bicomp<head_comp<Tag::dict, verb_adv>>> : 
+				          verb_bicomp<head_comp<Tag::dict, verb_adv>>;
 		}
 		else if (syn.has(Tag::adn))
 		{
@@ -330,7 +333,7 @@ Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, morph->syn, move(
 		else if (syn.has(Tag::prep))
 		{
 			left_rule = no_left;
-			right_rule = head_comp<no_right>;
+			right_rule = head_comp<Tag::part, no_right>;
 		}
 	}
 }
@@ -375,12 +378,15 @@ RuleOutput verb_suffix(const Head& head, const Mod& mod)
 			auto match = merge(head, '-', mod, no_left, noun_suffix)
 				- (Tag::fin | tags::person | tags::number | tags::verb_regularity)
 				+ (Tag::past | Tag::fin | Tag::part);
-			if (!head->syn.has(Tag::rpast))
-				match->syn.remove(Tag::fin);
-			if (!head->syn.has(Tag::rpart))
-				match->syn.remove(Tag::part);
-			if (!head->syn.hasAny(Tag::rpart | Tag::rpast))
-				match->errors.emplace("verb does not have a regular past tense");
+			if (!head->syn.hasAny(Tag::verbe))
+			{
+				if (!head->syn.has(Tag::rpast))
+					match->syn.remove(Tag::fin);
+				if (!head->syn.has(Tag::rpart))
+					match->syn.remove(Tag::part);
+				if (!head->syn.hasAny(Tag::rpart | Tag::rpast))
+					match->errors.emplace("verb does not have a regular past tense");
+			}
 			return { match };
 		}
 		if (morph->orth == "er" || morph->orth == "ee")

@@ -186,7 +186,7 @@ enum class Tag : char
 	sg, pl, uc, rc, 
 	first, second, third, 
 	nom, akk, gen,
-	pres, past, 
+	pres, past, dict, modal, 
 	fin, part, free,
 	rsg, rpast, rpart,
 	verbe, verby
@@ -236,10 +236,11 @@ namespace tags
 {
 	static constexpr Tags number = Tag::sg | Tag::pl | Tag::uc;
 	static constexpr Tags person = Tag::first | Tag::second | Tag::third;
-	static constexpr Tags sg3 = Tag::sg | Tag::third;
+	static constexpr Tags    sg3 = Tag::sg | Tag::third;
+	static constexpr Tags nonsg3 = Tag::pl | Tag::first | Tag::second;
 	static constexpr Tags verb_regularity = Tag::rsg | Tag::rpast | Tag::rpart;
 
-	static constexpr Tags verbrsg = Tag::pres | Tag::fin | Tag::first | Tag::second | Tag::pl | Tag::rsg;
+	static constexpr Tags verbrsg = Tag::pres | Tag::dict | Tag::fin | nonsg3 | Tag::rsg;
 	static constexpr Tags verbr = verbrsg | Tag::rpast | Tag::rpart;
 }
 
