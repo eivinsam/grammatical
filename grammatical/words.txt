@@ -7,7 +7,7 @@ ing: suffix
 y: suffix
 ies: suffix
 
-by: prep +agent
+by: prep +agent|time
 of: prep +patient
 to: prep +patient|action
 for: prep +patient
@@ -70,6 +70,9 @@ some: nom.akk.pl.patient
 wish: nom.akk.rc.patient 
 work: nom.akk.uc.patient
 
+now: nom.akk.time
+then: nom.akk.time
+
 
 English: adn
 expensive: adn
@@ -88,12 +91,12 @@ soon: adv
 very: adad
 
 be:   action.dict             +patient|action
-am:   action.pres.fin.1.sg    +patient|action
-are:  action.pres.fin.2.sg.pl +patient|action
-is:   action.pres.fin.3.sg    +patient|action
-was:  action.past.fin.1.3.sg  +patient|action
-were: action.past.fin.2.pl    +patient|action
-been: action.past.part        +patient|action
+am:   action.pres.fin.1.sg    +patient|action|time
+are:  action.pres.fin.2.sg.pl +patient|action|time
+is:   action.pres.fin.3.sg    +patient|action|time
+was:  action.past.fin.1.3.sg  +patient|action|time
+were: action.past.fin.2.pl    +patient|action|time
+been: action.past.part        +patient|action|time
 
 do:    action.prespl    +action
 does:  action.pressg    +action
@@ -106,17 +109,17 @@ has:    action.pressg        +patient|action
 had:    action.past.fin.part +patient|action
 having: action.pres.part     +patient|action
 
-can:     action.modalpres +action
-could:   action.modalpast +action 
-may:     action.modalpres +action
-might:   action.modalpast +action 
-shall:   action.modalpres +action
-should:  action.modalpast +action
-will:    action.modalpres +action
-would:   action.modalpast +action
-must:    action.modalpres +action
+can:     action.modalpres +action <by.time
+could:   action.modalpast +action <by.time
+may:     action.modalpres +action <by.time
+might:   action.modalpast +action <by.time
+shall:   action.modalpres +action <by.time
+should:  action.modalpast +action <by.time
+will:    action.modalpres +action <by.time
+would:   action.modalpast +action <by.time
+must:    action.modalpres +action <by.time
 
-arriv:    action.verbe
+arriv:    action.verbe 
 buy:      action.verbrsg       +patient *agent
 bought:   action.past.fin.part +patient *agent
 come:     action.verbrsg

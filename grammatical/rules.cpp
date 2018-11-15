@@ -46,7 +46,9 @@ std::shared_ptr<RightBranch> merge(const Head& head, char type, const Mod& mod, 
 
 bool subject_verb_agreement(const Mod& mod, const Head& head)
 {
-	return !head->syn.hasAll(Tag::pres | Tag::fin) ||
+	return 
+		head->syn.has(Tag::modal) || 
+		!head->syn.hasAll(Tag::pres | Tag::fin) ||
 		(head->syn.hasAll(tags::nonsg3) && mod->syn.hasAny(tags::nonsg3)) || 
 		(head->syn.hasAll(tags::sg3) && mod->syn.hasAll(tags::sg3));
 }
@@ -78,7 +80,7 @@ RuleOutput noun_det(const Mod& mod, const Head& head)
 		const auto result = merge(mod, ':', head, no_left, no_right);
 
 		if (!head->agreesOn(Tag::sg | Tag::pl | Tag::uc).with(*mod))
-			result->errors.emplace("det and noun not compatible");
+			result->errors.emplace("det " + mod->toString() + " and noun " + head->toString() + " not compatible");
 		return { result };
 	}
 	return {};
@@ -293,9 +295,13 @@ Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, morph->syn, move(
 	args = _morph->args;
 	static const std::unordered_map<string, std::pair<LeftRule, RightRule>> special = 
 	{
-		{ "is",{ be_lspec, be_rspec } },
-		{ "am",{ be_lspec, be_rspec } },
+		{ "be", { no_left, aux_comp<Tag::part> } },
+		{ "been", { no_left, aux_comp<Tag::part> } },
+		{ "is", { be_lspec, be_rspec } },
+		{ "am", { be_lspec, be_rspec } },
 		{ "are", { be_lspec, be_rspec } },
+		{ "was", { be_lspec, be_rspec } },
+		{ "were", { be_lspec, be_rspec } },
 		{ "have", { verb_spec, have_right }},
 		{ "has", { verb_spec, have_right }},
 		{ "had", { verb_spec, have_right }},

@@ -94,7 +94,7 @@ struct Data
 		{ "verbrsg", tags::verbrsg }, { "verbr", tags::verbr },
 		{ "pressg", Tag::fin | Tag::pres | tags::sg3 },
 		{ "prespl", Tag::fin | Tag::pres | tags::nonsg3 | Tag::dict },
-		{ "modalpres", Tag::modal | Tag::fin | Tag::pres | tags::sg3 | tags::nonsg3 },
+		{ "modalpres", Tag::modal | Tag::fin | Tag::pres }, // | tags::sg3 | tags::nonsg3 },
 		{ "modalpast", Tag::modal | Tag::fin | Tag::past }
 		};
 		struct

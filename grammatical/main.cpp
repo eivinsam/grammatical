@@ -38,23 +38,6 @@ public:
 	}
 };
 
-// 'I  -> noun, sg, 1, nom
-// 'me -> noun, sg, 1, acc
-// 'my -> noun, sg, 1, gen
-// ...
-// 'cow -> noun, 3, nom, acc, :sg(gen)
-// 'cows -> noun, 3, nom, acc, pl, :pl(gen)
-// 'milk -> noun, 3, nom, acc, sg, :(gen)
-
-// X(Y) + Z:X(Y) -> Z.X
-
-// gen.sg + noun:gen.sg -> noun.sg
-// gen.pl + noun:gen.pl -> noun.pl
-// noun.nom.nonsg3 + verb.pres:nom.nonsg3 -> verb.pres.s
-// noun.nom.sg.3 + verb.pres:nom.sg.3 -> verb.pres.s
-// noun.nom.num.per + verb.past:nom -> verb.past.s
-// noun.nom.num.par + verb.part:nom -> verb.part.s
-// 
 
 int main(int argc, char* argv[])
 {
@@ -76,8 +59,8 @@ int main(int argc, char* argv[])
 		"let me give you some advice",
 		"let me give you a piece of advice",
 		"that is a useful piece of equipment",
-		"we bought a few bits of furniture for the new apartment",
-		//"how much luggage have you got",
+		//"we bought a few bits of furniture for the new apartment", // 'a few' is unsolved
+		//"how much luggage have you got", // question pronouns not yet supported
 		"she had six separate items of luggage",
 		"everybody is watching",
 		"is everybody watching",

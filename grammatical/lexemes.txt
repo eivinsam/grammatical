@@ -1,6 +1,9 @@
 patient:
+time:
+
 agent: patient
 action: <for.agent
+
 
 meal: patient
 hard:
