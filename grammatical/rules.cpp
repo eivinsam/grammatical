@@ -111,7 +111,8 @@ RuleOutput head_prep(const Head& head, const Mod& mod)
 			assert(branch->type == '+');
 			if (const auto M = mark(branch->head->toString()); M && *M != Mark::None)
 			{
-				if (auto arg_match = result->args.extract(args::matching<Rel::mod>(*M, branch->mod->sem)); arg_match.empty())
+				auto arg_match = result->args.extract(args::matching<Rel::mod>(*M, branch->mod->sem)); 
+				if (arg_match.empty())
 					result->errors.emplace("preposition " + mod->toString() + " does not match " + head->toString());
 
 			}
@@ -128,7 +129,7 @@ RuleOutput head_prep(const Head& head, const Mod& mod)
 
 RuleOutput noun_rmod(const Head& head, const Mod& mod)
 {
-	if (mod->syn.has(Tag::part))
+	if (mod->syn.hasAll(Tag::part | Tag::pres))
 	{
 		const auto result = merge(head, '<', mod, noun_adjective, no_right);
 

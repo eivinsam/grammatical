@@ -38,6 +38,69 @@ public:
 	}
 };
 
+#include <oui_window.h>
+#include <oui_text.h>
+
+
+class PhraseDrawer
+{
+	oui::Point pen;
+	oui::VectorFont& font;
+	int depth = 0;
+
+	float add_space()
+	{
+		const float half_space_width = font.offset(" ", 24)*0.5f;
+		pen.x += half_space_width;
+		float mid_x = pen.x;
+		pen.x += half_space_width;
+		return mid_x;
+	}
+
+	struct DecreaseOnDestruct
+	{
+		int& value;
+
+		~DecreaseOnDestruct() { --value; }
+	};
+public:
+	PhraseDrawer(oui::Point pen, oui::VectorFont& font) : pen(pen), font(font) { }
+
+	int draw(const Phrase& p)
+	{
+		depth += 1;
+		DecreaseOnDestruct decr{ depth };
+
+		if (auto lp = dynamic_cast<const LeftBranch*>(&p))
+		{
+			int max_depth = draw(*lp->mod);
+			const auto mid_x = add_space();
+			max_depth = std::max(max_depth, draw(*lp->head));
+			oui::Point bottom = { mid_x, pen.y + (max_depth - depth) * 24 };
+			oui::line({ mid_x, pen.y }, bottom);
+			auto typestr = std::string(1, lp->type);
+			bottom.x -= font.offset(typestr, 24)*0.5;
+			font.drawLine(bottom, typestr, 24, oui::colors::black);
+			return max_depth;
+		}
+		if (auto rp = dynamic_cast<const RightBranch*>(&p))
+		{
+			int max_depth = draw(*rp->head);
+			const auto mid_x = add_space();
+			max_depth = std::max(max_depth, draw(*rp->mod));
+			oui::Point bottom = { mid_x, pen.y + (max_depth - depth) * 24 };
+			oui::line({ mid_x, pen.y }, bottom);
+			auto typestr = std::string(1, rp->type);
+			bottom.x -= font.offset(typestr, 24)*0.5;
+			font.drawLine(bottom, typestr, 24, oui::colors::black);
+			return max_depth;
+		}
+		pen.x = font.drawLine(pen, p.toString(), 24, oui::colors::black);
+		return depth;
+	}
+
+};
+
 
 int main(int argc, char* argv[])
 {
@@ -80,13 +143,19 @@ int main(int argc, char* argv[])
 		"the work will be finished soon",
 		"will the work be finished soon",
 		"they might have been invited to the party",
-		"might they have been invited to the party"
+		"might they have been invited to the party",
+		"they eat garf",
+		"they give me books",
+		"he give me books"
 	};
 
-	int i = 0;
+	auto window = oui::Window({ "grammatical", 600, 300, 4 });
+	auto font = oui::VectorFont(oui::resolve(oui::NativeFont::serif));
+
+	std::vector<std::vector<Phrase::ptr>> phrases;
+
 	for (auto sentence : sentences)
 	{
-		++i;
 		Tokenizer<std::istringstream> tokens(sentence);
 
 		Parser parse;
@@ -96,14 +165,38 @@ int main(int argc, char* argv[])
 
 		for (auto&& result : parse.run())
 		{
-			cout << i << ":";
-			for (auto&& phrase : result)
-				cout << ' ' << phrase->toString();
-			cout << '\n';
-			for (auto&& phrase : result)
-				for (auto&& error : phrase->errors)
-					cout << "  * " << error << '\n';
+			phrases.push_back(move(result));
+			//for (auto&& phrase : result)
+			//	cout << ' ' << phrase->toString();
+			//cout << '\n';
+			//for (auto&& phrase : result)
+			//	for (auto&& error : phrase->errors)
+			//		cout << "  * " << error << '\n';
 		}
+	}
+
+	size_t index = 0;
+	oui::input.keydown = [&](oui::Key key, oui::PrevKeyState prev_state)
+	{
+		if (prev_state != oui::PrevKeyState::up)
+			return;
+		switch (key)
+		{
+		case oui::Key::left: if (index > 0) --index; window.redraw(); break;
+		case oui::Key::right: if (index < phrases.size() - 1) ++index; window.redraw(); break;
+		}
+	};
+
+	while (window.update())
+	{
+
+		auto area = window.area();
+		window.clear(oui::colors::white);
+
+		PhraseDrawer(area.min, font).draw(*phrases[index].front());
+		
+		
+
 	}
 
 	return 0;
