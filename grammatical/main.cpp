@@ -30,7 +30,7 @@ public:
 		{
 			const auto new_morph = make_shared<Morpheme>(*_it);
 			auto new_word = make_shared<Word>(new_morph->sem, new_morph);
-			new_word->errors.emplace("unknown word " + *_it);
+			new_word->errors.emplace_back("unknown word " + *_it);
 			result.emplace_back(move(new_word));
 		}
 		++_it;

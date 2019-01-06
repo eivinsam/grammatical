@@ -26,7 +26,7 @@ class Parser
 	{
 		bool operator()(const Item& a, const Item& b)
 		{
-			return a.phrase->errors.length() > b.phrase->errors.length();
+			return a.phrase->errorCount() > b.phrase->errorCount();
 		}
 	};
 	std::priority_queue<Item, std::vector<Item>, ErrorOrder> _agenda;

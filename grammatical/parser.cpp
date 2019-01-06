@@ -62,7 +62,7 @@ std::vector<Parser::Phrases> Parser::run()
 {
 	while (!_agenda.empty())
 	{
-		if (!_top.empty() && _agenda.top().phrase->errors.length() > _top.front()->errors.length())
+		if (!_top.empty() && _agenda.top().phrase->errorCount() > _top.front()->errorCount())
 			break;
 		auto item = _agenda.top(); _agenda.pop();
 		_positions[item.from].begins_with.emplace_back(item.phrase);

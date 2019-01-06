@@ -113,14 +113,14 @@ RuleOutput head_prep(const Head& head, const Mod& mod)
 			{
 				auto arg_match = result->args.extract(args::matching<Rel::mod>(*M, branch->mod->sem)); 
 				if (arg_match.empty())
-					result->errors.emplace("preposition " + mod->toString() + " does not match " + head->toString());
+					result->errors.emplace_back("preposition " + mod->toString() + " does not match " + head->toString());
 
 			}
 			else
-				result->errors.emplace("preposition phrase " + head->toString() + " is not a valid mark");
+				result->errors.emplace_back("preposition phrase " + head->toString() + " is not a valid mark");
 		}
 		else
-			result->errors.emplace("preposition " + mod->toString() + " modifying " + head->toString() + " has no complement");
+			result->errors.emplace_back("preposition " + mod->toString() + " modifying " + head->toString() + " has no complement");
 
 		return { result };
 	}
@@ -134,15 +134,15 @@ RuleOutput noun_rmod(const Head& head, const Mod& mod)
 		const auto result = merge(head, '<', mod, noun_adjective, no_right);
 
 		if (!mod->syn.has(Tag::part))
-			result->errors.emplace("verb right-modifying noun must be a participle");
+			result->errors.emplace_back("verb right-modifying noun must be a participle");
 		else
 		{
 			if (mod->syn.has(Tag::past) && (mod->hasBranch('+') || mod->hasBranch('*')))
-				result->errors.emplace("past participle modifying noun can't have an object");
+				result->errors.emplace_back("past participle modifying noun can't have an object");
 			if (mod->syn.has(Tag::pres) && mod->hasBranch(':'))
-				result->errors.emplace("present participle modifying noun can't have subject");
+				result->errors.emplace_back("present participle modifying noun can't have subject");
 			if (dynamic_cast<const Word*>(mod.get()))
-				result->errors.emplace("verb phrase must be complex to right-modify a noun");
+				result->errors.emplace_back("verb phrase must be complex to right-modify a noun");
 		}
 
 		return { result };
@@ -157,9 +157,9 @@ RuleOutput verb_spec(const Mod& mod, const Head& head)
 		const auto result = merge(mod, ':', head, no_left, no_right);
 
 		if (!head->syn.has(Tag::fin))
-			result->errors.emplace("verb participle cannot take a subject");
+			result->errors.emplace_back("verb participle cannot take a subject");
 		if (!subject_verb_agreement(mod, head))
-			result->errors.emplace("verb-subject disagreement");
+			result->errors.emplace_back("verb-subject disagreement");
 
 		return { result };
 	}
@@ -168,8 +168,8 @@ RuleOutput verb_spec(const Mod& mod, const Head& head)
 
 void check_verbal_object(const Head& head, const Mod& mod, const Phrase::mut_ptr& match)
 {
-	if (mod->syn.hasAny(Tag::part | Tag::dict) && mod->hasBranch(':'))
-		match->errors.emplace("verbal object to " + head->toString() + " cannot have subject");
+	if (mod->syn.hasAny({ Tag::part, Tag::dict }) && mod->hasBranch(':'))
+		match->errors.emplace_back("verbal object to " + head->toString() + " cannot have subject");
 }
 
 template <Tag VerbType, RightRule NextRight>
@@ -181,7 +181,7 @@ RuleOutput head_comp(const Head& head, const Mod& mod)
 		const auto match = merge(head, '+', mod, head->left_rule, NextRight);
 
 		if (!mod->sem || !mod->sem->matchesAny(head->args.select(args::comp) | args::sem))
-			match->errors.emplace("direct object " + mod->toString() + " does not match " + head->toString());
+			match->errors.emplace_back("direct object " + mod->toString() + " does not match " + head->toString());
 
 		check_verbal_object(head, mod, match);
 
@@ -200,7 +200,7 @@ RuleOutput verb_bicomp(const Head& head, const Mod& mod)
 		const auto match = merge(head, '*', mod, head->left_rule, NextRule);
 
 		if (!mod->sem || !mod->sem->matchesAny(head->args.select(args::bicomp) | args::sem))
-			match->errors.emplace("indirect object " + mod->toString() + " does not match " + head->toString());
+			match->errors.emplace_back("indirect object " + mod->toString() + " does not match " + head->toString());
 
 		check_verbal_object(head, mod, match);
 
@@ -228,7 +228,7 @@ RuleOutput be_lspec(const Mod& mod, const Head& head)
 	{
 		auto match = merge(mod, ':', head, no_left, no_right);
 		if (!subject_be_agreement(mod, head))
-			match->errors.emplace("subject " + mod->toString() + "does not agree with " + head->toString());
+			match->errors.emplace_back("subject " + mod->toString() + "does not agree with " + head->toString());
 		return { match };
 	}
 	return {};
@@ -247,8 +247,8 @@ RuleOutput aux_comp(const Head& head, const Mod& mod)
 	{
 		auto match = merge(head, '+', mod, head->left_rule, head_prep);
 
-		if (!mod->syn.hasAll((Tense | ...)))
-			match->errors.emplace("tense of object " + mod->toString() + " does not agree with auxillary " + head->toString());
+		if (!mod->syn.hasAll({ Tense... }))
+			match->errors.emplace_back("tense of object " + mod->toString() + " does not agree with auxillary " + head->toString());
 
 		check_verbal_object(head, mod, match);
 
@@ -268,7 +268,7 @@ RuleOutput be_rspec(const Head& head, const Mod& mod)
 	{
 		auto match = merge(head, ':', mod, no_left, aux_comp<Tag::part>);
 		if (!subject_be_agreement(mod, head))
-			match->errors.emplace("subject " + mod->toString() + " does not agree with verb " + head->toString());
+			match->errors.emplace_back("subject " + mod->toString() + " does not agree with verb " + head->toString());
 		result.emplace_back(match);
 	}
 	return result;
@@ -283,13 +283,13 @@ RuleOutput aux_rspec(const Head& head, const Mod& mod)
 	{
 		auto match = merge(head, ':', mod, no_left, NextRule);
 		if (!subject_verb_agreement(mod, head))
-			match->errors.emplace("subject " + mod->toString() +" does not agree with verb " + head->toString());
+			match->errors.emplace_back("subject " + mod->toString() +" does not agree with verb " + head->toString());
 		result.emplace_back(match);
 	}
 	return result;
 }
 
-Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, morph->syn, move(lexeme),{} }, _morph{ morph }
+Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, morph->syn, move(lexeme) }, _morph{ morph }
 {
 	static constexpr auto have_right = aux_rspec<aux_comp<Tag::part, Tag::past>>;
 	static constexpr auto presf_aux_right = aux_rspec<aux_comp<Tag::fin, Tag::pres, Tag::pl>>;
@@ -391,8 +391,8 @@ RuleOutput verb_suffix(const Head& head, const Mod& mod)
 					match->syn.remove(Tag::fin);
 				if (!head->syn.has(Tag::rpart))
 					match->syn.remove(Tag::part);
-				if (!head->syn.hasAny(Tag::rpart | Tag::rpast))
-					match->errors.emplace("verb does not have a regular past tense");
+				if (!head->syn.hasAny({ Tag::rpart, Tag::rpast }))
+					match->errors.emplace_back("verb does not have a regular past tense");
 			}
 			return { match };
 		}

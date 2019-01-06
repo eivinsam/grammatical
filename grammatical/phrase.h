@@ -113,72 +113,6 @@ public:
 };
 
 
-template <class T>
-class Chain
-{
-	struct Node;
-	using NodePtr = std::shared_ptr<const Node>;
-	struct Node
-	{
-		T value;
-		NodePtr next;
-
-		template <class... Args>
-		Node(NodePtr next, Args&&... args) : value(std::forward<Args>(args)...), next(move(next)) { }
-	};
-	NodePtr _first;
-public:
-	using size_type = int;
-	using value_type = const T;
-	class iterator
-	{
-		friend class Chain;
-		const Node* _node;
-		iterator(const Node* node) : _node(node) { }
-	public:
-		using iterator_category = std::forward_iterator_tag;
-		using difference_type = void;
-		using value_type = const T;
-		using reference = value_type&;
-		using pointer = value_type*;
-
-		iterator& operator++() { _node = _node->next.get(); return *this; }
-
-		reference operator*() const { return _node->value; }
-		pointer operator->() const { return &_node->value; }
-
-		bool operator!=(const iterator& b) const { return _node != b._node; }
-	};
-	using const_iterator = iterator;
-
-	int length() const
-	{
-		int result = 0;
-		for (auto next = _first; next; next = next->next)
-			++result;
-		return result;
-	}
-
-	template <class... Args>
-	void emplace(Args&&... args)
-	{
-		_first = std::make_shared<Node>(std::move(_first), std::forward<Args>(args)...);
-	}
-
-	const_iterator begin() const { return { _first.get() }; }
-	const_iterator end() const { return { nullptr }; }
-
-	Chain operator+(const Chain& b) const
-	{
-		if (!b._first)
-			return *this;
-		Chain result = b;
-		for (auto&& value : *this)
-			result.emplace(value);
-		return result;
-	}
-};
-
 enum class Tag : char
 {
 	suffix, 
@@ -270,9 +204,38 @@ using Mod = std::shared_ptr<const Phrase>;
 
 inline const Head& head(const std::shared_ptr<const Phrase>& p) { return static_cast<const Head&>(p); }
 
+template <class T>
+class NonNull
+{
+	T _ptr;
+public:
+	constexpr NonNull(T ptr) : _ptr(std::move(ptr)) { if (_ptr == nullptr) throw std::logic_error("nullptr not allowed"); }
+
+	constexpr decltype(auto) operator->() const { return _ptr.operator->(); }
+	constexpr decltype(auto) operator*() const { return *_ptr; }
+
+	constexpr bool operator==(const NonNull& other) const { return _ptr == other._ptr; }
+	constexpr bool operator!=(const NonNull& other) const { return _ptr != other._ptr; }
+};
+
 using RuleOutput = std::vector<std::shared_ptr<Phrase>>;
-using LeftRule = RuleOutput(*)(const Mod&, const Head&);
-using RightRule = RuleOutput(*)(const Head&, const Mod&);
+using RawLeftRule = RuleOutput(*)(const Mod&, const Head&);
+using RawRightRule = RuleOutput(*)(const Head&, const Mod&);
+class LeftRule : public NonNull<RawLeftRule>
+{
+public:
+	using NonNull<RawLeftRule>::NonNull;
+
+	RuleOutput operator()(const Mod& mod, const Head& head) const { return operator*()(mod, head); }
+};
+class RightRule : public NonNull<RawRightRule>
+{
+public:
+	using NonNull<RawRightRule>::NonNull;
+
+	RuleOutput operator()(const Head& head, const Mod& mod) const { return operator*()(head, mod); }
+};
+
 
 inline RuleOutput no_left(const Mod&, const Head&) { return {}; }
 inline RuleOutput no_right(const Head&, const Mod&) { return {}; }
@@ -384,8 +347,6 @@ public:
 	}
 };
 
-using ErrorChain = Chain<std::string>;
-
 class Phrase
 {
 public:
@@ -393,8 +354,8 @@ public:
 	using ptr = std::shared_ptr<const Phrase>;
 	using mut_ptr = std::shared_ptr<Phrase>;
 
-	Phrase(int length, Tags syn, Lexeme::ptr lex, Chain<string> errors, LeftRule l = no_left, RightRule r = no_right) 
-		: length(length), syn(syn), sem(move(lex)), errors(move(errors)), left_rule(l), right_rule(r) { }
+	Phrase(int length, Tags syn, Lexeme::ptr lex, LeftRule l = no_left, RightRule r = no_right) 
+		: length(length), syn(syn), sem(move(lex)), left_rule(l), right_rule(r) { }
 	virtual ~Phrase() = default;
 
 	const int length;
@@ -407,7 +368,7 @@ public:
 	LeftRule left_rule = no_left;
 	RightRule right_rule = no_right;
 
-	ErrorChain errors;
+	std::vector<std::string> errors;
 
 	struct AG
 	{
@@ -415,6 +376,8 @@ public:
 		bool with(const Phrase& b) const { return b.syn.hasAll(tags); }
 	};
 	AG agreesOn(Tags tags) const { return { syn.select(tags) }; }
+
+	virtual size_t errorCount() const = 0;
 	
 	virtual bool hasBranch(char type) const { return false; }
 	virtual const BinaryPhrase* getBranch(char type) const { return nullptr; }
@@ -426,12 +389,14 @@ class BinaryPhrase : public Phrase
 {
 public:
 	BinaryPhrase(Tags syn, Lexeme::ptr&& lex, char type, Head&& head, Mod&& mod, LeftRule l, RightRule r) :
-		Phrase(head->length + mod->length, syn, move(lex), head->errors + mod->errors, l, r),
+		Phrase(head->length + mod->length, syn, move(lex), l, r),
 		type(type), head(move(head)), mod(move(mod)) { }
 
 	const char type;
 	const Head head;
 	const Mod mod;
+
+	size_t errorCount() const final { return errors.size() + head->errorCount() + mod->errorCount(); }
 
 	bool hasBranch(char t) const final { return t == type || head->hasBranch(t); }
 	const BinaryPhrase* getBranch(char t) const final { return t == type ? this : head->getBranch(t); }
@@ -469,11 +434,13 @@ class Morpheme : public Phrase
 public:
 	string orth;
 
-	Morpheme(string orth) : Phrase{ orth.size(),{},{},{} }, orth(move(orth)) { }
+	Morpheme(string orth) : Phrase{ orth.size(),{},{} }, orth(move(orth)) { }
 
 	template <class S>
 	void update(S&& s) { update(s.syn, std::move(s.sem)); }
 	void update(Tags syn, Lexeme::ptr sem);
+
+	size_t errorCount() const final { return errors.size(); }
 
 	string toString() const final { return orth; }
 };
@@ -483,6 +450,8 @@ class Word : public Phrase
 	Phrase::ptr _morph;
 public:
 	Word(Lexeme::ptr lex, Phrase::ptr morph);
+
+	size_t errorCount() const { return errors.size() + _morph->errorCount(); }
 
 	string toString() const final { return _morph->toString(); }
 };
