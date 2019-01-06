@@ -48,7 +48,7 @@ bool subject_verb_agreement(const Mod& mod, const Head& head)
 {
 	return 
 		head->syn.has(Tag::modal) || 
-		!head->syn.hasAll(Tag::pres | Tag::fin) ||
+		!head->syn.hasAll({ Tag::pres, Tag::fin }) ||
 		(head->syn.hasAll(tags::nonsg3) && mod->syn.hasAny(tags::nonsg3)) || 
 		(head->syn.hasAll(tags::sg3) && mod->syn.hasAll(tags::sg3));
 }
@@ -58,10 +58,10 @@ bool subject_be_agreement(const Mod& mod, const Head& head)
 	if (head->syn.has(Tag::part))
 		return true;
 	// are, were
-	if (head->syn.hasAll(Tag::pl | Tag::second) && mod->syn.hasAny(Tag::pl | Tag::second))
+	if (head->syn.hasAll({ Tag::pl, Tag::second }) && mod->syn.hasAny({ Tag::pl, Tag::second }))
 		return true; 
 	// am, is, was
-	return head->agreesOn(Tag::first | Tag::second | Tag::third).with(*mod);
+	return head->agreesOn({ Tag::first, Tag::second, Tag::third }).with(*mod);
 }
 
 template <class A, class B>
@@ -79,8 +79,8 @@ RuleOutput noun_det(const Mod& mod, const Head& head)
 	{
 		const auto result = merge(mod, ':', head, no_left, no_right);
 
-		if (!head->agreesOn(Tag::sg | Tag::pl | Tag::uc).with(*mod))
-			result->errors.emplace("det " + mod->toString() + " and noun " + head->toString() + " not compatible");
+		if (!head->agreesOn({ Tag::sg, Tag::pl, Tag::uc }).with(*mod))
+			result->errors.emplace_back("det " + mod->toString() + " and noun " + head->toString() + " not compatible");
 		return { result };
 	}
 	return {};
@@ -129,7 +129,7 @@ RuleOutput head_prep(const Head& head, const Mod& mod)
 
 RuleOutput noun_rmod(const Head& head, const Mod& mod)
 {
-	if (mod->syn.hasAll(Tag::part | Tag::pres))
+	if (mod->syn.has(Tag::part) && !mod->hasBranch('?'))
 	{
 		const auto result = merge(head, '<', mod, noun_adjective, no_right);
 
@@ -172,11 +172,11 @@ void check_verbal_object(const Head& head, const Mod& mod, const Phrase::mut_ptr
 		match->errors.emplace_back("verbal object to " + head->toString() + " cannot have subject");
 }
 
-template <Tag VerbType, RightRule NextRight>
+template <Tag VerbType, RawRightRule NextRight>
 RuleOutput head_comp(const Head& head, const Mod& mod)
 {
 	auto result = NextRight(head, mod);
-	if (mod->syn.hasAny(Tag::akk | Tag::adn | VerbType))
+	if (mod->syn.hasAny({ Tag::akk, Tag::adn, VerbType }))
 	{
 		const auto match = merge(head, '+', mod, head->left_rule, NextRight);
 
@@ -190,7 +190,7 @@ RuleOutput head_comp(const Head& head, const Mod& mod)
 	}
 	return result;
 }
-template <RightRule NextRule>
+template <RawRightRule NextRule>
 RuleOutput verb_bicomp(const Head& head, const Mod& mod)
 {
 	auto result = NextRule(head, mod);
@@ -243,7 +243,7 @@ RuleOutput aux_comp(const Head& head, const Mod& mod)
 	{
 		result.emplace_back(merge(head, '+', mod, head->left_rule, head_prep));
 	}
-	else if (mod->syn.hasAny(Tag::fin | Tag::part))
+	else if (mod->syn.hasAny({ Tag::fin, Tag::part }))
 	{
 		auto match = merge(head, '+', mod, head->left_rule, head_prep);
 
@@ -266,7 +266,7 @@ RuleOutput be_rspec(const Head& head, const Mod& mod)
 
 	if (mod->syn.has(Tag::nom))
 	{
-		auto match = merge(head, ':', mod, no_left, aux_comp<Tag::part>);
+		auto match = merge(head, '?', mod, no_left, aux_comp<Tag::part>);
 		if (!subject_be_agreement(mod, head))
 			match->errors.emplace_back("subject " + mod->toString() + " does not agree with verb " + head->toString());
 		result.emplace_back(match);
@@ -274,14 +274,14 @@ RuleOutput be_rspec(const Head& head, const Mod& mod)
 	return result;
 }
 
-template <RightRule NextRule>
+template <RawRightRule NextRule>
 RuleOutput aux_rspec(const Head& head, const Mod& mod)
 {
 	auto result = NextRule(head, mod);
 
 	if (mod->syn.has(Tag::nom))
 	{
-		auto match = merge(head, ':', mod, no_left, NextRule);
+		auto match = merge(head, '?', mod, no_left, NextRule);
 		if (!subject_verb_agreement(mod, head))
 			match->errors.emplace_back("subject " + mod->toString() +" does not agree with verb " + head->toString());
 		result.emplace_back(match);
@@ -321,12 +321,12 @@ Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, morph->syn, move(
 		}
 	if (left_rule == no_left && right_rule == no_right) // nothing special was found
 	{
-		if (syn.hasAny(Tag::nom | Tag::akk))
+		if (syn.hasAny({ Tag::nom, Tag::akk }))
 		{
 			left_rule = noun_adjective;
 			right_rule = noun_rmod;
 		}
-		else if (syn.hasAny(Tag::fin | Tag::part))
+		else if (syn.hasAny({ Tag::fin, Tag::part }))
 		{
 			left_rule = syn.has(Tag::fin) ? verb_spec : no_left;
 			right_rule = syn.has(Tag::modal) ? 
@@ -363,7 +363,7 @@ RuleOutput noun_suffix(const Head& head, const Mod& mod)
 	{
 		if (morph->orth == "s")
 		{
-			return { merge(head, '-', mod, no_left, no_right) - (Tag::sg | Tag::rc) + Tag::pl };
+			return { merge(head, '-', mod, no_left, no_right) - Tags(Tag::sg, Tag::rc) + Tag::pl };
 		}
 	}
 	return {};
@@ -377,14 +377,14 @@ RuleOutput verb_suffix(const Head& head, const Mod& mod)
 		if (morph->orth == "ing")
 		{
 			return { merge(head, '-', mod, no_left, noun_suffix)
-				- (Tag::fin | tags::person | tags::number | tags::verb_regularity)
-				+ (Tag::part | Tag::pres) };
+				- Tags(Tag::fin, tags::person, tags::number, tags::verb_regularity)
+				+ Tags(Tag::part, Tag::pres) };
 		}
 		if (morph->orth== "ed")
 		{
 			auto match = merge(head, '-', mod, no_left, noun_suffix)
-				- (Tag::fin | tags::person | tags::number | tags::verb_regularity)
-				+ (Tag::past | Tag::fin | Tag::part);
+				- Tags(Tag::fin, tags::person, tags::number, tags::verb_regularity)
+				+ Tags(Tag::past, Tag::fin, Tag::part);
 			if (!head->syn.hasAny(Tag::verbe))
 			{
 				if (!head->syn.has(Tag::rpast))
@@ -399,8 +399,8 @@ RuleOutput verb_suffix(const Head& head, const Mod& mod)
 		if (morph->orth == "er" || morph->orth == "ee")
 		{
 			return { merge(head, '-', mod, no_left, noun_suffix)
-				- (Tag::fin | tags::person | tags::number | tags::verb_regularity)
-				+ (Tag::nom | Tag::akk | tags::sg3 | Tag::rc) };
+				- Tags(Tag::fin, tags::person, tags::number, tags::verb_regularity)
+				+ Tags(Tag::nom, Tag::akk, tags::sg3, Tag::rc) };
 		}
 	}
 	return {};
@@ -426,11 +426,11 @@ void Morpheme::update(Tags new_syn, Lexeme::ptr new_sem)
 	{
 		right_rule = noun_suffix;
 	}
-	if (syn.hasAll(Tag::fin | Tag::pres | Tag::pl))
+	if (syn.hasAll({ Tag::fin, Tag::pres, Tag::pl }))
 	{
 		right_rule = verb_suffix;
 	}
-	else if (syn.hasAny(Tag::verbe | Tag::verby))
+	else if (syn.hasAny({ Tag::verbe, Tag::verby }))
 	{
 		right_rule = verb_suffix;
 	}

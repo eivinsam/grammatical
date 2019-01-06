@@ -147,10 +147,8 @@ class Tags
 public:
 	constexpr Tags() = default;
 	constexpr Tags(Tag b) : _flags(_flag(b)) { }
-
-	friend constexpr Tags operator|(Tag a, Tags b) { return { _flag(a) | b._flags }; }
-	friend constexpr Tags operator|(Tags a, Tag b) { return { a._flags | _flag(b) }; }
-	constexpr Tags operator|(Tags b) const { return { _flags | b._flags }; }
+	template <class First, class... Rest>
+	constexpr Tags(First first, Rest... rest) : Tags(first) { insert(Tags(rest...)); }
 
 	constexpr bool has(Tag b) const { return hasAny(b); }
 	constexpr bool hasAny(Tags b) const { return (_flags&b._flags) != 0; }
@@ -164,18 +162,16 @@ public:
 	constexpr explicit operator bool() const { return _flags != 0; }
 };
 
-constexpr Tags operator|(Tag a, Tag b) { return Tags{} | a | b; }
-
 namespace tags
 {
-	static constexpr Tags number = Tag::sg | Tag::pl | Tag::uc;
-	static constexpr Tags person = Tag::first | Tag::second | Tag::third;
-	static constexpr Tags    sg3 = Tag::sg | Tag::third;
-	static constexpr Tags nonsg3 = Tag::pl | Tag::first | Tag::second;
-	static constexpr Tags verb_regularity = Tag::rsg | Tag::rpast | Tag::rpart;
+	inline constexpr Tags number{ Tag::sg, Tag::pl, Tag::uc };
+	inline constexpr Tags person{ Tag::first, Tag::second, Tag::third };
+	inline constexpr Tags    sg3{ Tag::sg, Tag::third };
+	inline constexpr Tags nonsg3{ Tag::pl, Tag::first, Tag::second };
+	inline constexpr Tags verb_regularity{ Tag::rsg, Tag::rpast, Tag::rpart };
 
-	static constexpr Tags verbrsg = Tag::pres | Tag::dict | Tag::fin | nonsg3 | Tag::rsg;
-	static constexpr Tags verbr = verbrsg | Tag::rpast | Tag::rpart;
+	static constexpr Tags verbrsg{ Tag::pres, Tag::dict, Tag::fin, nonsg3, Tag::rsg };
+	static constexpr Tags verbr{ verbrsg, Tag::rpast, Tag::rpart };
 }
 
 enum class Rel : char { spec, mod, comp, bicomp };
@@ -255,23 +251,24 @@ class Lexeme
 public:
 	using string = std::string;
 	using ptr = std::shared_ptr<const Lexeme>;
+	using ptr_vector = std::vector<ptr>;
 
-	class All : public std::vector<ptr>
+	class All : public ptr_vector
 	{
 	public:
-		using std::vector<ptr>::vector;
+		using ptr_vector::vector;
 		All() = default;
-		All(std::vector<ptr>&& b) : std::vector<ptr>(move(b)) { }
-		All(const std::vector<ptr>& b) : std::vector<ptr>(b) { }
+		All(ptr_vector&& b) : ptr_vector(move(b)) { }
+		All(const ptr_vector& b) : ptr_vector(b) { }
 	};
 
-	class Any : public std::vector<ptr>
+	class Any : public ptr_vector
 	{
 	public:
-		using std::vector<ptr>::vector;
+		using ptr_vector::vector;
 		Any() = default;
-		Any(std::vector<ptr>&& b) : std::vector<ptr>(move(b)) { }
-		Any(const std::vector<ptr>& b) : std::vector<ptr>(b) { }
+		Any(ptr_vector&& b) : ptr_vector(move(b)) { }
+		Any(const ptr_vector& b) : ptr_vector(b) { }
 
 
 		bool contains(const ptr& p) const
@@ -321,7 +318,7 @@ public:
 	{
 		sem.emplace_back(p);
 	}
-	void become(const std::vector<ptr>& b)
+	void become(const ptr_vector& b)
 	{
 		sem.reserve(sem.size() + b.size());
 		for (auto&& e : b)
