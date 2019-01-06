@@ -46,7 +46,9 @@ class PhraseDrawer
 {
 	oui::Point pen;
 	oui::VectorFont& font;
+	float max_y;
 	int depth = 0;
+	bool first = true;
 
 	float add_space()
 	{
@@ -64,23 +66,54 @@ class PhraseDrawer
 		~DecreaseOnDestruct() { --value; }
 	};
 public:
-	PhraseDrawer(oui::Point pen, oui::VectorFont& font) : pen(pen), font(font) { }
+	PhraseDrawer(oui::Point pen, float max_y, oui::VectorFont& font) : pen(pen), max_y(max_y), font(font) { }
 
 	int draw(const Phrase& p)
 	{
+		if (depth == 0)
+		{
+			if (first)
+				first = false;
+			else
+			{
+				oui::set(oui::colors::red);
+				pen.x = font.drawLine(pen, " ! ", 24);
+				oui::set(oui::colors::black);
+			}
+		}
 		depth += 1;
 		DecreaseOnDestruct decr{ depth };
+
+		const auto draw_joint = [this](const BinaryPhrase* p, const float mid_x, const int max_depth)
+		{
+			oui::Point bottom = { mid_x, pen.y + (max_depth - depth) * 24 };
+			oui::line({ mid_x, pen.y }, bottom);
+			auto typestr = std::string(1, p->type);
+			bottom.x -= font.offset(typestr, 24)*0.5;
+			font.drawLine(bottom, typestr, 24);
+			if (!p->errors.empty())
+			{
+				oui::set(oui::colors::red);
+				for (auto&& error : p->errors)
+				{
+					max_y -= 24;
+					font.drawLine({ mid_x, max_y }, error, 24);
+				}
+				oui::line({ mid_x, bottom.y + 24 }, { mid_x, max_y });
+				oui::set(oui::colors::black);
+			}
+
+		};
+
 
 		if (auto lp = dynamic_cast<const LeftBranch*>(&p))
 		{
 			int max_depth = draw(*lp->mod);
 			const auto mid_x = add_space();
 			max_depth = std::max(max_depth, draw(*lp->head));
-			oui::Point bottom = { mid_x, pen.y + (max_depth - depth) * 24 };
-			oui::line({ mid_x, pen.y }, bottom);
-			auto typestr = std::string(1, lp->type);
-			bottom.x -= font.offset(typestr, 24)*0.5;
-			font.drawLine(bottom, typestr, 24, oui::colors::black);
+
+			draw_joint(lp, mid_x, max_depth);
+
 			return max_depth;
 		}
 		if (auto rp = dynamic_cast<const RightBranch*>(&p))
@@ -88,14 +121,12 @@ public:
 			int max_depth = draw(*rp->head);
 			const auto mid_x = add_space();
 			max_depth = std::max(max_depth, draw(*rp->mod));
-			oui::Point bottom = { mid_x, pen.y + (max_depth - depth) * 24 };
-			oui::line({ mid_x, pen.y }, bottom);
-			auto typestr = std::string(1, rp->type);
-			bottom.x -= font.offset(typestr, 24)*0.5;
-			font.drawLine(bottom, typestr, 24, oui::colors::black);
+
+			draw_joint(rp, mid_x, max_depth);
+
 			return max_depth;
 		}
-		pen.x = font.drawLine(pen, p.toString(), 24, oui::colors::black);
+		pen.x = font.drawLine(pen, p.toString(), 24);
 		return depth;
 	}
 
@@ -178,8 +209,8 @@ int main(int argc, char* argv[])
 	size_t index = 0;
 	oui::input.keydown = [&](oui::Key key, oui::PrevKeyState prev_state)
 	{
-		if (prev_state != oui::PrevKeyState::up)
-			return;
+		//if (prev_state != oui::PrevKeyState::up)
+		//	return;
 		switch (key)
 		{
 		case oui::Key::left: if (index > 0) --index; window.redraw(); break;
@@ -192,8 +223,12 @@ int main(int argc, char* argv[])
 
 		auto area = window.area();
 		window.clear(oui::colors::white);
+		oui::set(oui::colors::black);
 
-		PhraseDrawer(area.min, font).draw(*phrases[index].front());
+		PhraseDrawer drawer(area.min, area.max.y, font);
+		
+		for (auto&& phrase : phrases[index])
+			drawer.draw(*phrase);
 		
 		
 
