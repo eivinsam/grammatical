@@ -66,6 +66,8 @@ class PhraseDrawer
 		~DecreaseOnDestruct() { --value; }
 	};
 public:
+	std::string tip;
+
 	PhraseDrawer(oui::Point pen, float max_y, oui::VectorFont& font) : pen(pen), max_y(max_y), font(font) { }
 
 	int draw(const Phrase& p)
@@ -89,6 +91,8 @@ public:
 			oui::Point bottom = { mid_x, pen.y + (max_depth - depth) * 24 };
 			oui::line({ mid_x, pen.y }, bottom);
 			auto typestr = std::string(1, p->type);
+			if (oui::input.mouse.hovering({ {bottom.x - 12, bottom.y}, {bottom.x + 12, bottom.y + 24} }))
+				tip = to_string(p->syn);
 			bottom.x -= font.offset(typestr, 24).x*0.5;
 			font.drawLine(bottom, typestr, 24);
 			if (!p->errors.empty())
@@ -126,7 +130,11 @@ public:
 
 			return max_depth;
 		}
-		pen.x = font.drawLine(pen, p.toString(), 24);
+		const auto text = p.toString();
+		if (oui::input.mouse.hovering({ pen, pen + font.offset(text, 24) }))
+			tip = to_string(p.syn);
+		pen.x = font.drawLine(pen, text, 24);
+
 		return depth;
 	}
 
@@ -207,6 +215,8 @@ int main(int argc, char* argv[])
 	}
 
 	size_t index = 0;
+	oui::input.mouse.onMove = [&](const oui::Point&) { window.redraw(); };
+
 	oui::input.keydown = [&](oui::Key key, oui::PrevKeyState prev_state)
 	{
 		//if (prev_state != oui::PrevKeyState::up)
@@ -230,7 +240,15 @@ int main(int argc, char* argv[])
 		for (auto&& phrase : phrases[index])
 			drawer.draw(*phrase);
 		
-		
+		if (auto pos = oui::input.mouse.currentPosition(); pos && !drawer.tip.empty())
+		{
+			float tiph = 16;
+			pos->y -= tiph*0.8f;
+			oui::set(oui::Color{ .9,.9,.9 });
+			oui::fill({ *pos, *pos + font.offset(drawer.tip, tiph) });
+			oui::set(oui::colors::black);
+			font.drawLine(*pos, drawer.tip, tiph);
+		}
 
 	}
 

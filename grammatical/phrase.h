@@ -126,6 +126,23 @@ enum class Tag : char
 	verbe, verby
 };
 
+inline std::string to_string(Tag t)
+{
+	const char* names[] =
+	{
+	"suffix",
+	"prep", "adv", "adn", "adad",
+	"sg", "pl", "uc", "rc",
+	"first", "second", "third",
+	"nom", "akk", "gen",
+	"pres", "past", "dict", "modal",
+	"fin", "part", "free",
+	"rsg", "rpast", "rpart",
+	"verbe", "verby"
+	};
+	return names[static_cast<char>(t)];
+}
+
 class Tags
 {
 	unsigned _flags = 0;
@@ -160,7 +177,25 @@ public:
 	constexpr Tags select(Tags b) const { return { _flags & b._flags }; }
 
 	constexpr explicit operator bool() const { return _flags != 0; }
+
+	friend std::string to_string(Tags tags);
 };
+
+inline std::string to_string(Tags tags)
+{
+	std::string result;
+	for (char i = 0; tags._flags != 0; ++i)
+	{
+		if (tags._flags & 1)
+		{
+			if (!result.empty())
+				result.push_back(' ');
+			result.append(to_string(static_cast<Tag>(i)));
+		}
+		tags._flags = tags._flags >> 1;
+	}
+	return result;
+}
 
 namespace tags
 {
