@@ -272,13 +272,21 @@ inline RuleOutput no_left(const Mod&, const Head&) { return {}; }
 inline RuleOutput no_right(const Head&, const Mod&) { return {}; }
 
 class Lexeme;
-struct Argument
+
+struct Shape
+{
+	std::shared_ptr<const Lexeme> sem;
+	Tags syn;
+	Mark mark = Mark::None;
+
+	Shape() = default;
+	Shape(Mark mark, Tags syn, std::shared_ptr<const Lexeme> sem) : sem(move(sem)), syn(syn), mark(mark) { }
+};
+struct Argument : Shape
 {
 	Rel rel;
-	Mark mark;
-	std::shared_ptr<const Lexeme> sem;
 
-	Argument(Rel rel, Mark mark, std::shared_ptr<const Lexeme> sem) : rel(rel), mark(mark), sem(move(sem)) { }
+	Argument(Rel rel, Shape shape) : Shape(std::move(shape)), rel(rel) { }
 };
 
 class Lexeme
@@ -314,22 +322,6 @@ public:
 			return false;
 		}
 	};
-private:
-	bool _is_sem(const ptr& p) const
-	{
-		if (this == p.get())
-			return true;
-		for (auto&& ep : p->sem)
-		{
-			for (auto&& e : sem)
-				if (e->_is_sem(ep))
-					continue;
-			return false;
-		}
-		return true;
-	}
-
-public:
 	string name;
 
 	All  sem;
@@ -360,7 +352,24 @@ public:
 			become(e);
 	}
 
-	bool is(const ptr& p) const { return _is_sem(p); }
+	bool is(const ptr& p) const
+	{
+		if (this == p.get())
+			return true;
+		// check if any part of this is p
+		for (auto&& e : sem)
+			if (e->is(p))
+				return true;
+		// ok, well, then if p is a composite lexeme, check if this is every part of p
+		return p->name.empty() && is(p->sem);
+	}
+	bool is(const All& p) const
+	{
+		for (auto&& e : p)
+			if (not is(e))
+				return false;
+		return true;
+	}
 	bool is(const Any& p) const 
 	{
 		for (auto&& e : p)
@@ -408,6 +417,8 @@ public:
 		bool with(const Phrase& b) const { return b.syn.hasAll(tags); }
 	};
 	AG agreesOn(Tags tags) const { return { syn.select(tags) }; }
+
+	bool matches(const Shape& shape) const { return syn.hasAll(shape.syn) && (!sem || sem->is(shape.sem)); }
 
 	virtual size_t errorCount() const = 0;
 	

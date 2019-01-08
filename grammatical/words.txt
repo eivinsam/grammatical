@@ -7,7 +7,7 @@ ing: suffix
 y: suffix
 ies: suffix
 
-by: prep +agent|time
+by: prep +agent.akk|time.akk
 of: prep +patient
 to: prep +patient|action
 for: prep +patient
@@ -90,62 +90,62 @@ soon: adv
 
 very: adad
 
-be:   action.dict             +patient|action
-am:   action.pres.fin.1.sg    +patient|action|time
-are:  action.pres.fin.2.sg.pl +patient|action|time
-is:   action.pres.fin.3.sg    +patient|action|time
-was:  action.past.fin.1.3.sg  +patient|action|time
-were: action.past.fin.2.pl    +patient|action|time
-been: action.past.part        +patient|action|time
+be:   action.dict             +patient.akk|action.past.part|action.pres.part|adn
+am:   action.pres.fin.1.sg    +patient.akk|action.past.part|action.pres.part|adn|time
+are:  action.pres.fin.2.sg.pl +patient.akk|action.past.part|action.pres.part|adn|time
+is:   action.pres.fin.3.sg    +patient.akk|action.past.part|action.pres.part|adn|time
+was:  action.past.fin.1.3.sg  +patient.akk|action.past.part|action.pres.part|adn|time
+were: action.past.fin.2.pl    +patient.akk|action.past.part|action.pres.part|adn|time
+been: action.past.part        +patient.akk|action.past.part|action.pres.part|adn|time
 
-do:    action.prespl    +action
-does:  action.pressg    +action
-did:   action.past.fin  +action
-doing: action.pres.part +action
-done:  action.past.part +action
+do:    action.prespl    +action.dict
+does:  action.pressg    +action.dict
+did:   action.past.fin  +action.dict
+doing: action.pres.part +action.dict
+done:  action.past.part +action.dict
 
-have:   action.prespl        +patient|action
-has:    action.pressg        +patient|action
-had:    action.past.fin.part +patient|action
-having: action.pres.part     +patient|action
+have:   action.prespl        +patient.akk|action.past.part
+has:    action.pressg        +patient.akk|action.past.part
+had:    action.past.fin.part +patient.akk|action.past.part
+having: action.pres.part     +patient.akk|action.past.part
 
-can:     action.modalpres +action <by.time
-could:   action.modalpast +action <by.time
-may:     action.modalpres +action <by.time
-might:   action.modalpast +action <by.time
-shall:   action.modalpres +action <by.time
-should:  action.modalpast +action <by.time
-will:    action.modalpres +action <by.time
-would:   action.modalpast +action <by.time
-must:    action.modalpres +action <by.time
+can:     action.modalpres +action.dict <by.time
+could:   action.modalpast +action.dict <by.time
+may:     action.modalpres +action.dict <by.time
+might:   action.modalpast +action.dict <by.time
+shall:   action.modalpres +action.dict <by.time
+should:  action.modalpast +action.dict <by.time
+will:    action.modalpres +action.dict <by.time
+would:   action.modalpast +action.dict <by.time
+must:    action.modalpres +action.dict <by.time
 
 arriv:    action.verbe 
-buy:      action.verbrsg       +patient *agent
-bought:   action.past.fin.part +patient *agent
+buy:      action.verbrsg       +patient.akk *agent.akk
+bought:   action.past.fin.part +patient.akk *agent.akk
 come:     action.verbrsg
 came:     action.past.fin
 come:     action.past.part
-comput:   action.verbe +patient
-eat:      action.verbr    +patient
-ate:      action.past.fin +patient <for.meal
-eaten:    action.past.part +patient <for.meal
-finish:   action.verbr +patient
-give:     action.verbrsg   +patient *agent
-gave:     action.past.fin  +patient *agent
-giving:   action.pres.part +patient *agent
-given:    action.past.part +patient *agent
-invit:    action.verbe    <to.patient
-let:      action.verbrsg.past.part +patient *agent
-letting:  action.pres.part        +patient *agent
-listen:   action.verbr    <to.patient
-see:      action.verbrsg      +patient
-saw:      action.past.fin     +patient
-seeing:   action.pres.part +patient
-seen:     action.past.part +patient
-sell:     action.verbrsg   +patient
-selling:  action.pres.part +patient
-sold:     action.past.fin.part	+patient
-teach:    action.verbr +to.action *agent
-taught:   action.past.fin.part +to.action *agent
-watch:    action.verbr +patient 
+comput:   action.verbe     +patient.akk
+eat:      action.verbr     +patient.akk
+ate:      action.past.fin  +patient.akk <for.meal
+eaten:    action.past.part +patient.akk <for.meal
+finish:   action.verbr     +patient.akk
+give:     action.verbrsg   +patient.akk *agent.akk
+gave:     action.past.fin  +patient.akk *agent.akk
+giving:   action.pres.part +patient.akk *agent.akk
+given:    action.past.part +patient.akk *agent.akk
+invit:    action.verbe    <to.patient.akk
+let:      action.verbrsg.past.part +action.dict *agent.akk
+letting:  action.pres.part         +action.dict *agent.akk
+listen:   action.verbr    <to.patient.akk
+see:      action.verbrsg   +patient.akk
+saw:      action.past.fin  +patient.akk
+seeing:   action.pres.part +patient.akk
+seen:     action.past.part +patient.akk
+sell:     action.verbrsg   +patient.akk
+selling:  action.pres.part +patient.akk
+sold:     action.past.fin.part	+patient.akk
+teach:    action.verbr +to.action *agent.akk
+taught:   action.past.fin.part +to.action *agent.akk
+watch:    action.verbr +patient.akk 
 work:     action.verbr +hard

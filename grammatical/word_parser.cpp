@@ -77,7 +77,7 @@ struct Data
 		return lex;
 	}
 
-	auto read_dotlist(TokenIterator<Input>& it) const
+	Shape read_dotlist(TokenIterator<Input>& it) const
 	{
 		static const std::unordered_map<string, Tags> tag_lookup =
 		{
@@ -97,12 +97,7 @@ struct Data
 		{ "modalpres", {Tag::modal, Tag::fin, Tag::pres} }, // | tags::sg3 | tags::nonsg3 },
 		{ "modalpast", {Tag::modal, Tag::fin, Tag::past} }
 		};
-		struct
-		{
-			Tags syn;
-			Mark mark = Mark::None;
-			Lexeme::ptr sem;
-		} result;
+		Shape result;
 		shared_ptr<Lexeme> meta;
 		for (;; ++it)
 		{
@@ -140,10 +135,7 @@ struct Data
 	{
 		for (;; ++it)
 		{
-			auto dotlist = read_dotlist(it);
-			assert(!dotlist.syn);
-			assert(dotlist.sem);
-			m->args.emplace(rel, dotlist.mark, move(dotlist.sem));
+			m->args.emplace(rel, read_dotlist(it));
 			if (*it != "|")
 				return;
 		}
@@ -203,6 +195,8 @@ struct Data
 	}
 
 };
+
+
 
 
 std::vector<Phrase::ptr> parse_word(string_view orth)

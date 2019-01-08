@@ -145,11 +145,11 @@ int main(int argc, char* argv[])
 {
 	const char* sentences[] =
 	{
+		"a wish",
+		"the book",
 		"have arrived",
 		"they will come",
-		"the book",
 		"that English teacher",
-		"a wish",
 		"my latest idea",
 		"computers are very expensive",
 		"do you sell old books",

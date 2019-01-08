@@ -16,13 +16,22 @@ namespace args
 	template <Rel R>
 	auto matching(const Lexeme::ptr& s)
 	{ 
+		assert(s != nullptr);
 		return [=](const Argument& arg) { return arg.rel == R && s->is(arg.sem); };
 	}
 
 	template <Rel R>
 	auto matching(Mark m, const Lexeme::ptr& s)
 	{
+		assert(s != nullptr);
 		return [=](const Argument& arg) { return arg.rel == R && arg.mark == m && s->is(arg.sem); };
+	}
+
+	template <Rel R>
+	auto matching(Mark m, const Phrase::ptr& p)
+	{
+		assert(p != nullptr);
+		return [=](const Argument& arg) { return arg.rel == R && arg.mark == m && p->matches(arg); };
 	}
 }
 struct KeepHeadLexeme
@@ -111,7 +120,7 @@ RuleOutput head_prep(const Head& head, const Mod& mod)
 			assert(branch->type == '+');
 			if (const auto M = mark(branch->head->toString()); M && *M != Mark::None)
 			{
-				auto arg_match = result->args.extract(args::matching<Rel::mod>(*M, branch->mod->sem)); 
+				auto arg_match = result->args.extract(args::matching<Rel::mod>(*M, branch->mod)); 
 				if (arg_match.empty())
 					result->errors.emplace_back("preposition " + mod->toString() + " does not match " + head->toString());
 
@@ -168,26 +177,25 @@ RuleOutput verb_spec(const Mod& mod, const Head& head)
 
 void check_verbal_object(const Head& head, const Mod& mod, const Phrase::mut_ptr& match)
 {
-	if (mod->syn.hasAny({ Tag::part, Tag::dict }) && mod->hasBranch(':'))
+	if (mod->syn.hasAny({ Tag::part, Tag::dict }) && (mod->hasBranch(':') || mod->hasBranch('?')))
 		match->errors.emplace_back("verbal object to " + head->toString() + " cannot have subject");
 }
 
-template <Tag VerbType, RawRightRule NextRight>
+template <RawRightRule NextRight, Tag... VerbTarget>
 RuleOutput head_comp(const Head& head, const Mod& mod)
 {
 	auto result = NextRight(head, mod);
-	if (mod->syn.hasAny({ Tag::akk, Tag::adn, VerbType }))
-	{
-		const auto match = merge(head, '+', mod, head->left_rule, NextRight);
+	for (auto&& comp : head->args.select(args::comp))
+		if (mod->matches(comp))
+		{
+			const auto match = merge(head, '+', mod, head->left_rule, NextRight);
 
-		if (!mod->sem || !mod->sem->matchesAny(head->args.select(args::comp) | args::sem))
-			match->errors.emplace_back("direct object " + mod->toString() + " does not match " + head->toString());
+			check_verbal_object(head, mod, match);
 
-		check_verbal_object(head, mod, match);
+			match->args.erase(args::comp);
+			result.emplace_back(match);
+		}
 
-		match->args.erase(args::comp);
-		result.emplace_back(match);
-	}
 	return result;
 }
 template <RawRightRule NextRule>
@@ -330,8 +338,8 @@ Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, morph->syn, move(
 		{
 			left_rule = syn.has(Tag::fin) ? verb_spec : no_left;
 			right_rule = syn.has(Tag::modal) ? 
-				aux_rspec<verb_bicomp<head_comp<Tag::dict, verb_adv>>> : 
-				          verb_bicomp<head_comp<Tag::dict, verb_adv>>;
+				aux_rspec<verb_bicomp<head_comp<verb_adv, Tag::dict>>> : 
+				          verb_bicomp<head_comp<verb_adv, Tag::part, Tag::pres>>;
 		}
 		else if (syn.has(Tag::adn))
 		{
@@ -340,7 +348,7 @@ Word::Word(Lexeme::ptr lexeme, Phrase::ptr morph) : Phrase{ 1, morph->syn, move(
 		else if (syn.has(Tag::prep))
 		{
 			left_rule = no_left;
-			right_rule = head_comp<Tag::part, no_right>;
+			right_rule = head_comp<no_right, Tag::part, Tag::pres>;
 		}
 	}
 }
