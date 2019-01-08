@@ -52,7 +52,7 @@ class PhraseDrawer
 
 	float add_space()
 	{
-		const float half_space_width = font.offset(" ", 24)*0.5f;
+		const float half_space_width = font.offset(" ", 24).x*0.5f;
 		pen.x += half_space_width;
 		float mid_x = pen.x;
 		pen.x += half_space_width;
@@ -89,7 +89,7 @@ public:
 			oui::Point bottom = { mid_x, pen.y + (max_depth - depth) * 24 };
 			oui::line({ mid_x, pen.y }, bottom);
 			auto typestr = std::string(1, p->type);
-			bottom.x -= font.offset(typestr, 24)*0.5;
+			bottom.x -= font.offset(typestr, 24).x*0.5;
 			font.drawLine(bottom, typestr, 24);
 			if (!p->errors.empty())
 			{
@@ -221,7 +221,7 @@ int main(int argc, char* argv[])
 	while (window.update())
 	{
 
-		auto area = window.area();
+		auto area = window.area().shrink(12);
 		window.clear(oui::colors::white);
 		oui::set(oui::colors::black);
 
